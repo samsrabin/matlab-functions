@@ -1,0 +1,16 @@
+*.png
+*.tif
+*.tif.aux.xml
+*.zip
+*.log
+*.nc
+*.mat
+*.hdf
+*.csv
+*.html
+*.jpg
+*.rtf
+*.db
+hatchfill2_r8
+kakearney-boundedline/.gitignore
+.ignore
