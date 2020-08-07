@@ -1,3 +1,2 @@
 
-addpath(genpath('/Users/sam/Documents/MATLAB/'))
-addpath(genpath('/Users/Shared/MATLAB'))
+addpath(genpath('$HOME/Documents/MATLAB/'))
