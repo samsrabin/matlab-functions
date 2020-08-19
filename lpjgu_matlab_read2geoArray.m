@@ -67,7 +67,7 @@ end
 ok_to_save = ~force_mat_nosave && isempty(target) ;
 
 % Find file
-[NAME, EXT] = process_filename(in_file) ;
+[NAME, EXT] = process_filename(in_file, verbose) ;
 
 % Import
 if contains(in_file, '.garr.mat') && strcmp('.garr.mat', in_file(end-(length('.garr.mat')-1):end))
@@ -261,7 +261,7 @@ end
 end
 
 
-function [NAME, EXT] = process_filename(in_file)
+function [NAME, EXT] = process_filename(in_file, verbose)
 
 if strcmp(in_file(end-2:end),'.gz')
     in_file = in_file(1:end-3) ;
@@ -272,7 +272,9 @@ end
 % If in_file is symlink, replace it with its target
 [s,w] = unix(['[[ -L ' in_file ' ]] && echo true']) ;
 if s==0 && contains(w,'true') % is symlink
-    disp('Symlink; pointing to target instead.')
+    if verbose
+        disp('Symlink; pointing to target instead.')
+    end
     [~,w] = unix(['stat -f "%Y" ' in_file]) ;
     in_file = regexprep(w,'[\n\r]+','') ; % Remove extraneous newline
 end
