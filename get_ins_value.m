@@ -48,7 +48,7 @@ if ~isempty(C)
     if length(C2) ~= 1
         error('length(value) ~= 1')
     end
-    thisfile_value = C2{1}{1} 
+    thisfile_value = C2{1}{1} ;
 else
     C = regexp(str, ['\n\s*param "' parameter '"[^\n!]+'], 'match') ;
     if ~isempty(C)
