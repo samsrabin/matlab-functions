@@ -1,10 +1,30 @@
-function value = get_ins_value(filename, parameter)
+function value = get_ins_value(filename, parameter, required)
 
+if ~exist(filename, 'file')
+	error('Can''t find ins-file "%s"', filename)
+end
 F = dir(filename) ;
 thisDir = F.folder ;
-value = '' ;
+
+%% Troubleshooting
+%disp(parameter)
+
+% Call factorial function
+value = doit(thisDir, filename, parameter, '') ;
+
+% Error if not found
+if required && isempty(value)
+	error('%s not found in ins-files', parameter)
+end
+
+end
+
+
+function value = doit(thisDir, filename, parameter, value)
 
 % Read this file
+tmp = dir(filename) ;
+fprintf('Reading %s\n', tmp.name)
 str = fileread(filename) ;
 
 % Loop through ins-files called by this ins-file
@@ -13,14 +33,12 @@ if ~isempty(C)
     for f = 1:length(C)
         imported_file = strrep(regexp(C{f}, '"\S+"', 'match'), '"', '') ;
         imported_file = sprintf('%s/%s', thisDir, imported_file{1}) ;
-        imported_value = get_ins_value(imported_file, parameter) ;
-    end
-    if ~isempty(imported_value)
-        value = imported_value ;
+        value = doit(thisDir, imported_file, parameter, value) ;
     end
 end
 
 % Get the value from this file
+thisfile_value = '' ;
 C = regexp(str, ['\n\s*' parameter '\s+[^\n!]+'], 'match') ;
 if ~isempty(C)
     C = C{end} ;
@@ -28,7 +46,7 @@ if ~isempty(C)
     if length(C2) ~= 1
         error('length(value) ~= 1')
     end
-    value = C2{1}{1} ;
+    thisfile_value = C2{1}{1} 
 else
     C = regexp(str, ['\n\s*param "' parameter '"[^\n!]+'], 'match') ;
     if ~isempty(C)
@@ -37,8 +55,15 @@ else
         if length(C2) ~= 1
             error('length(value) ~= 1')
         end
-        value = C2{1}{1} ;
+        thisfile_value = C2{1}{1} ; 
     end
 end
+
+if ~isempty(thisfile_value)
+	value = thisfile_value ;
+end
+
+%% Troubleshooting
+%fprintf('   %s: %s\n', filename, value)
 
 end
