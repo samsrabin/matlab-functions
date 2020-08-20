@@ -6,8 +6,8 @@ end
 F = dir(filename) ;
 thisDir = F.folder ;
 
-%% Troubleshooting
-%disp(parameter)
+% % Troubleshooting
+% disp(parameter)
 
 % Call factorial function
 value = doit(thisDir, filename, parameter, '') ;
@@ -22,9 +22,11 @@ end
 
 function value = doit(thisDir, filename, parameter, value)
 
+% % Troubleshooting
+% tmp = dir(filename) ;
+% fprintf('%s: Checking %s\n', parameter, tmp.name)
+
 % Read this file
-tmp = dir(filename) ;
-fprintf('Reading %s\n', tmp.name)
 str = fileread(filename) ;
 
 % Loop through ins-files called by this ins-file
