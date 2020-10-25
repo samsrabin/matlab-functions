@@ -17,6 +17,7 @@ addOptional(p,'in_prec',2,@isint) ;
 % addOptional(p,'lonlats_target',[],is_Nx2_array) ;
 % addOptional(p,'list2map_target',[]) ;
 addOptional(p,'target',{},is_2elem_cell) ;
+addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 pFields = fieldnames(p.Results) ;
@@ -75,6 +76,7 @@ if contains(in_file, '.garr.mat') && strcmp('.garr.mat', in_file(end-(length('.g
 else
     in_matfile_garr = [in_file '.garr.mat'] ;
 end
+is_no_mat = true ;
 if exist(in_matfile_garr,'file') && isempty(target)
     if verbose
         disp([NAME EXT ':'])
@@ -87,6 +89,8 @@ if exist(in_matfile_garr,'file') && isempty(target)
             ME.message) ;
         pause(600)
     end
+    
+    is_no_mat = false ;
     
     had_yxv = isfield(out_struct, 'garr_yxv') ;
     if had_yxv
@@ -159,6 +163,11 @@ else
     if has_years
         yearList = unique(table_in.Year) ;
         Nyears = length(yearList) ;
+        if trimfirstyear_ifneeded && length(find(table_in.Year==yearList(1))) < length(find(table_in.Year==yearList(2)))
+            table_in(table_in.Year==yearList(1),:) = [] ;
+            yearList = yearList(2:end) ;
+            Nyears = length(yearList) ;
+        end
         if length(table_in.Lon) ~= Ncells*Nyears
             if ~isempty(lonlats_target)
                 % Remove cells and/or rearrange to match target
@@ -254,7 +263,7 @@ if (~exist(in_matfile_garr,'file') || had_yxv || (exist('unnecessary_yrdim', 'va
    && ok_to_save
     lpjgu_matlab_save_to_matfile(out_struct,in_matfile_garr,force_mat_save,verboseIfNoMat,verbose) ;
 end
-if verboseIfNoMat || verbose
+if (verboseIfNoMat && is_no_mat) || verbose
     disp('   Done.')
 end
 
