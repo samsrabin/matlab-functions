@@ -21,7 +21,7 @@ addRequired(p,'shapedata') ;
 addOptional(p,'lonlim',[-180 180],is2elemvec) ;
 addOptional(p,'latlim',[-90 90],is2elemvec) ;
 addOptional(p,'thisColormap',[],@isstr) ;
-addOptional(p,'fontSize',[],is1x1num) ;
+addOptional(p,'fontSize',14,is1x1num) ;
 addOptional(p,'edgeColor',[0.1,0.1,0.1],is3elemvec01) ;
 addOptional(p,'lineWidth',0.1,is1x1num) ;
 addOptional(p,'cbarOrient','eastoutside',@isstr) ;
@@ -33,10 +33,13 @@ addOptional(p,'flip',false,is1x1num) ;
 addOptional(p,'units_map','',@isstr) ;
 addOptional(p,'shapedata2',[]) ;
 addOptional(p,'shiftup',0,is1x1num) ;
+addOptional(p,'ncolorbins',64,is1x1num) ;
+addOptional(p,'binEdges',[]) ;
 % Options for SSE_diffs
 addOptional(p,'clim_int',1,@isint) ;
 addOptional(p,'only_optd',true,is1x1num) ;
 addOptional(p,'cbar_minmax',[-Inf Inf],is2elemvec) ;
+
 
 parse(p,map_data,shapedata,varargin{:});
 lonlim = p.Results.lonlim ;
@@ -57,6 +60,8 @@ flip = p.Results.flip ;
 units_map = p.Results.units_map ;
 shapedata2 = p.Results.shapedata2 ;
 shiftup = p.Results.shiftup ;
+ncolorbins = p.Results.ncolorbins ;
+binEdges = p.Results.binEdges ;
 
 
 %%
@@ -72,9 +77,13 @@ plabel('off'); % ,'fontsize',5)
 framem off
 gridm off
 
+
 if strcmp(thisColormap,'ssr_BFbins') || strcmp(thisColormap,'ssr_CemitBins') ...
    || strcmp(thisColormap,'ssr_BFbins_v2') || strcmp(thisColormap,'ssr_CemitBins_v2') ...
    || strcmp(thisColormap,'ssr_BFbins_v3') || strcmp(thisColormap,'ssr_CemitBins_v3')
+    if ~isempty(binEdges)
+        warning('Ignoring input binEdges')
+    end
     if strcmp(thisColormap,'ssr_BFbins') || strcmp(thisColormap,'ssr_BFbins_v2') || strcmp(thisColormap,'ssr_BFbins_v3')
         binEdges = [0 0.001 0.005 0.01 0.05 0.1 0.25 0.5 1] ;
         cAxisLabels = textscan(num2str(binEdges*100),'%s') ;
@@ -87,7 +96,7 @@ if strcmp(thisColormap,'ssr_BFbins') || strcmp(thisColormap,'ssr_CemitBins') ...
         cAxisLabels = {'0','0.01','0.05','0.1','0.5','1','5','10','50'} ;
     end
     
-    [~,indices] = histc(map_data,binEdges);
+    [N,indices] = histc(map_data,binEdges);
     indices(map_data>max(binEdges)) = max(indices(:)) ;
     indices(isnan(map_data)) = NaN ;
     indices(isinf(map_data)) = NaN ;
@@ -130,9 +139,9 @@ elseif strcmp(thisColormap,'rdbu_ssr')
         htmp = gca ;
         pcolor(map_data); shading flat; axis equal tight
 %         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
-%         cptcmap(cpt_file,'ncol',65);
-%         old_cmap = colormap(gca,brewermap(64,'rdbu_ssr')) ;
-        old_cmap = brewermap(64,'rdbu_ssr') ;
+%         cptcmap(cpt_file,'ncol',ncolorbins+1);
+%         old_cmap = colormap(gca,brewermap(ncolorbins,'rdbu_ssr')) ;
+        old_cmap = brewermap(ncolorbins,'rdbu_ssr') ;
         colormap(htmp,old_cmap) ;
         if isempty(caxis_lims)
             caxis_lims = [-max(abs(caxis)) max(abs(caxis))] ;
@@ -148,7 +157,7 @@ elseif strcmp(thisColormap,'rdbu_ssr')
         
         pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data_2) ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr_plusBGgray_dark.cpt' ;
-        cptcmap(cpt_file,htmp,'ncol',65,'flip',flip);
+        cptcmap(cpt_file,htmp,'ncol',ncolorbins+1,'flip',flip);
         hcb = colorbar(cbarOrient) ;
         caxis([cb_lims(1)-negVal cb_lims(2)])
         set(hcb,'YLim',cb_lims) ;
@@ -168,9 +177,6 @@ elseif strcmp(thisColormap,'rdbu_ssr')
             set(gca,'Position',gca_pos)
             set(hcb,'Position',hcb_pos)
         end
-        if ~isempty(units_map)
-            hcb.Label.String = units_map ;
-        end
         
         colorbar('off')
         if shiftup > 0
@@ -183,7 +189,7 @@ elseif strcmp(thisColormap,'rdbu_ssr')
     else
         hpcolorm = pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
-        cptcmap(cpt_file,'ncol',64);
+        cptcmap(cpt_file,'ncol',ncolorbins);
         if isempty(caxis_lims)
             caxis_lims = [-max(abs(caxis)) max(abs(caxis))] ;
         end
@@ -201,10 +207,109 @@ elseif strcmp(thisColormap,'rdbu_ssr')
         hcb = do_colorbar(cbarOrient,fontSize) ;
     end
     
+    if ~isempty(units_map)
+        hcb.Label.String = units_map ;
+    end
     
     
+elseif strcmp(thisColormap,'rdbu_ssr_bins')
     
+    if ~isempty(bground)
+        error('Need to update this to work with _bins')
+        bground = [bground nan(size(bground,1),1)] ;
+        bground = [bground ; nan(1,size(bground,2))] ;
+        
+        % Get initial colorbar
+%         pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
+        htmp = gca ;
+        pcolor(map_data); shading flat; axis equal tight
+%         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
+%         cptcmap(cpt_file,'ncol',ncolorbins+1);
+%         old_cmap = colormap(gca,brewermap(ncolorbins,'rdbu_ssr')) ;
+        old_cmap = brewermap(ncolorbins,'rdbu_ssr') ;
+        colormap(htmp,old_cmap) ;
+        if isempty(caxis_lims)
+            caxis_lims = [-max(abs(caxis)) max(abs(caxis))] ;
+        end
+        caxis(caxis_lims)
+        cb = colorbar(cbarOrient) ;
+        cb_lims = [cb.Limits(1) cb.Limits(2)] ;
+        negVal = (cb.Limits(2) - cb.Limits(1)) / size(old_cmap,1) ;
+        map_data_2 = map_data ;
+        map_data_2(bground==1 & isnan(map_data)) = cb_lims(1)-negVal ;
+        
+        colorbar('off')
+        
+        pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data_2) ;
+        cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr_plusBGgray_dark.cpt' ;
+        cptcmap(cpt_file,htmp,'ncol',ncolorbins+1,'flip',flip);
+        hcb = colorbar(cbarOrient) ;
+        caxis([cb_lims(1)-negVal cb_lims(2)])
+        set(hcb,'YLim',cb_lims) ;
+        if ~isempty(fontSize)
+            set(hcb,'FontSize',fontSize)
+        end
+        if do_log10x_ticks
+            gca_pos = get(gca,'Position') ;
+            hcb_pos = get(hcb,'Position') ;
+            ticks = get(hcb,'Ticks') ;
+            ticklabels = get(hcb,'TickLabels') ;
+            for tt = 1:length(ticks)
+                ticklabels{tt} = [num2str(10^ticks(tt)) 'x'] ;
+%                 ticklabels{tt} = ['10^{' num2str(ticks(tt)) '}x'] ;
+            end
+            set(hcb,'TickLabels',ticklabels)
+            set(gca,'Position',gca_pos)
+            set(hcb,'Position',hcb_pos)
+        end
+        
+        colorbar('off')
+        if shiftup > 0
+            set(gca,'Position',get(gca,'Position') + [0 shiftup 0 0])
+        end
+        clear hcb
+        hcb = cb_lims ;
+        h = gca ;
+                
+    else
+        
+        if isempty(binEdges)
+            error('You must provide binEdges')
+        end
+        cAxisLabels = textscan(num2str(binEdges),'%s') ;
+        cAxisLabels = cAxisLabels{1} ;
+        cAxisLabels{length(cAxisLabels)} = [cAxisLabels{length(cAxisLabels)} '%'] ;
+        
+        [N,indices] = histc(map_data,binEdges);
+        indices(map_data>max(binEdges)) = max(indices(:)) ;
+        indices(isnan(map_data)) = NaN ;
+%         indices(isinf(map_data)) = NaN ;
+        %     indices = [indices nan(90,1)] ;
+        %     indices = [indices ; nan(1,145)] ;
+        indices = [indices nan(size(indices,1),1)] ;
+        indices = [indices ; nan(1,size(indices,2))] ;
+        
+        pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,indices-1) ;
+        cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
+        
+        cptcmap(cpt_file,'ncol',length(binEdges)-1);
+        caxis([0 length(binEdges)-1])
+        
+        if do_log10x_ticks
+            error('Make this work? Or does it already?')
+            caxis_lims_new = caxis_lims ;
+            caxis_lims_new(1) = floor(caxis_lims_new(1)) ;
+            caxis_lims_new(2) = ceil(caxis_lims_new(2)) ;
+            caxis_lims = caxis_lims_new ;
+        end
+        
+        hcb = do_colorbar(cbarOrient,fontSize,0:(length(binEdges)-1),cAxisLabels) ;
+    end
     
+    if ~isempty(units_map)
+        hcb.Label.String = units_map ;
+    end
+
 elseif strcmp(thisColormap,'parula')
     map_data = [map_data nan(size(map_data,1),1)] ;
     map_data = [map_data ; nan(1,size(map_data,2))] ;
@@ -217,9 +322,9 @@ elseif strcmp(thisColormap,'parula')
         pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
 % % %         pcolor(map_data); shading flat; axis equal tight
 %         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
-%         cptcmap(cpt_file,'ncol',65);
-%         old_cmap = colormap(gca,brewermap(64,'rdbu_ssr')) ;
-        old_cmap = brewermap(64,'Reds') ;
+%         cptcmap(cpt_file,'ncol',ncolorbins+1);
+%         old_cmap = colormap(gca,brewermap(ncolorbins,'rdbu_ssr')) ;
+        old_cmap = brewermap(ncolorbins,'Reds') ;
         colormap(old_cmap) ;
 %         if isempty(caxis_lims)
 %             caxis_lims = [-max(abs(caxis)) max(abs(caxis))] ;
@@ -240,7 +345,7 @@ elseif strcmp(thisColormap,'parula')
 % % %         map_data_2_tmp(lat_tmp>max(latlim) | lat_tmp<min(latlim),:) = [] ;
 % % %         pcolorm(lat_tmp-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data_2_tmp) ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parula_plusBGgray_light.cpt' ;
-        cptcmap(cpt_file,'ncol',65); % good thru here
+        cptcmap(cpt_file,'ncol',ncolorbins+1); % good thru here
         hcb = colorbar(cbarOrient) ; % good thru here
 %         caxis([cb_lims(1)-negVal cb_lims(2)])
         set(hcb,'YLim',cb_lims) ; % good thru here
@@ -263,7 +368,7 @@ elseif strcmp(thisColormap,'parula')
     else
         pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
-        cptcmap(cpt_file,'ncol',64);
+        cptcmap(cpt_file,'ncol',ncolorbins);
 %         if isempty(caxis_lims)
 %             caxis_lims = [-max(abs(caxis)) max(abs(caxis))] ;
 %         end
@@ -305,7 +410,7 @@ elseif strcmp(thisColormap,'rdbu_ssr_neg1to1')
     
     pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
     cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/rdbu_ssr.cpt' ;
-    cptcmap(cpt_file,'ncol',64);
+    cptcmap(cpt_file,'ncol',ncolorbins);
     caxis([-1 1])
 %     hcb = colorbar(cbarOrient) ;
 %     if ~isempty(fontSize)
@@ -436,7 +541,7 @@ elseif strcmp(thisColormap,'heterogeneity_maps')
     pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
     hold off
     cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parula.cpt' ;
-    cptcmap(cpt_file,'ncol',64);
+    cptcmap(cpt_file,'ncol',ncolorbins);
     if ~isempty(caxis_lims)
         caxis(caxis_lims) ;
     end
@@ -518,7 +623,7 @@ elseif strcmp(thisColormap,'SSEs_optd')
 %         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parula_plusBGgray_dark.cpt' ;
 %         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parula_plusBGgray_light.cpt' ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parulaBright0.5_plusBGgray_dark.cpt' ;
-        cptcmap(cpt_file,'ncol',65);
+        cptcmap(cpt_file,'ncol',ncolorbins+1);
         hcb = colorbar(cbarOrient) ;
         set(hcb,'YLim',cb_lims) ;
         if ~isempty(fontSize)
@@ -540,7 +645,7 @@ elseif strcmp(thisColormap,'SSEs_optd')
     else
         pcolorm(lat-0.5*cellsize_lat,lon-0.5*cellsize_lon,map_data) ;
         cpt_file = '/Users/sam/Documents/MATLAB/cptfiles/ssr_parula.cpt' ;
-        cptcmap(cpt_file,'ncol',64);
+        cptcmap(cpt_file,'ncol',ncolorbins);
         if ~isempty(caxis_lims)
             caxis(caxis_lims) ;
         end
@@ -665,6 +770,9 @@ set(h,'FontSize',fontSize)
                 set(hcb,'FontSize',fontSize)
             end
             if ~isempty(varargin)
+                if iscellstr(cbarticklabels2{1})
+                    cbarticklabels2 = cbarticklabels2{1} ;
+                end
                 set(hcb,'Ticks',cbarticks2,'TickLabels',cbarticklabels2)
             end
         else
