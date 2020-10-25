@@ -1,10 +1,19 @@
 function out_struct = lpjgu_convert_mapsstruct_to_garrstruct(in_struct)
 
 % Get map array size and list2map (do not trust in_struct.list2map)
+Nvars = length(in_struct.varNames) ;
 if isfield(in_struct, 'maps_YXvyB') && isfield(in_struct, 'maps_YXvyr')
     in_size_bl = size(in_struct.maps_YXvyB) ;
+    if in_size_bl(3) ~= Nvars
+        error('in_struct maps (baseline) has %d variables, but varNames has %d', ...
+            in_size_bl(3), Nvars)
+    end
     list2map_bl = find(~isnan(mean(mean(in_struct.maps_YXvyB,4),3))) ;
     in_size_fu = size(in_struct.maps_YXvyr) ;
+    if in_size_fu(3) ~= Nvars
+        error('in_struct maps (future) has %d variables, but varNames has %d', ...
+            in_size_fu(3), Nvars)
+    end
     list2map_fu = find(~isnan(mean(mean(mean(in_struct.maps_YXvyB,5),4),3))) ;
     if ~isequal(list2map_bl, list2map_fu)
         error('This code assumes isequal(list2map_bl, list2map_fu)')
@@ -16,13 +25,25 @@ if isfield(in_struct, 'maps_YXvyB') && isfield(in_struct, 'maps_YXvyr')
     clear list2map_*
 elseif isfield(in_struct, 'maps_YXvs')
     in_size = size(in_struct.maps_YXvs) ;
+    if in_size(3) ~= Nvars
+        error('in_struct maps has %d variables, but varNames has %d', ...
+            in_size(3), Nvars)
+    end
     list2map = find(~isnan(mean(mean(in_struct.maps_YXvs,4),3))) ;
 else
     if isfield(in_struct, 'maps_YXvy')
         in_size = size(in_struct.maps_YXvy) ;
+        if in_size(3) ~= Nvars
+            error('in_struct maps has %d variables, but varNames has %d', ...
+                in_size(3), Nvars)
+        end
         list2map = find(~isnan(mean(mean(in_struct.maps_YXvy,4),3))) ;
     elseif isfield(in_struct, 'maps_YXv')
         in_size = size(in_struct.maps_YXv) ;
+        if in_size(3) ~= Nvars
+            error('in_struct maps has %d variables, but varNames has %d', ...
+                in_size(3), Nvars)
+        end
         list2map = find(~isnan(mean(in_struct.maps_YXv,3))) ;
     else
         error('in_struct.maps_YXv(y) not found')
