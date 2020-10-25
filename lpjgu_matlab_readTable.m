@@ -7,6 +7,7 @@ addOptional(p,'do_save_MAT',true,@islogical) ;
 addOptional(p,'verbose',false,@islogical) ;
 addOptional(p,'verboseIfNoMat',true,@islogical) ;
 addOptional(p,'dispPrefix','',@ischar) ;
+addOptional(p,'force_as_gridlist',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 pFields = fieldnames(p.Results) ;
@@ -76,8 +77,8 @@ else
     if verbose || verboseIfNoMat
         disp([dispPrefix '   Making table...'])
     end
-%     out_table = import_this_to_table(in_file, verbose, verboseIfNoMat, dispPrefix) ;
-    out_table = import_this_to_table(in_file, verbose, verboseIfNoMat, dispPrefix) ;
+    out_table = import_this_to_table( ...
+        in_file, verbose, verboseIfNoMat, dispPrefix, force_as_gridlist) ;
     if ~dont_save_MAT
         if do_save_MAT
             save(in_matfile,'out_table','-v7.3') ;
@@ -128,7 +129,8 @@ end
 end
 
 
-function out_table = import_this_to_table(in_file, verbose, verboseIfNoMat, dispPrefix)
+function out_table = import_this_to_table( ...
+    in_file, verbose, verboseIfNoMat, dispPrefix, force_as_gridlist)
 % Read header to get field names
 in_header = read_header(in_file) ;
 
@@ -169,6 +171,11 @@ end
 is_gridlist = false ;
 if size(A,2) < 2
     error('Input must be 2-d matrix.')
+elseif force_as_gridlist
+    A = A(:,1:2) ;
+    in_header = in_header(1:2) ;
+    colNames = {'Lon','Lat'} ;
+    is_gridlist = true ;
 elseif size(A,2) == 2
     if verbose || verboseIfNoMat
         warning('Assuming columns Lon, Lat.')

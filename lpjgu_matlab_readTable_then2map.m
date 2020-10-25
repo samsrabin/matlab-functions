@@ -14,6 +14,7 @@ addOptional(p,'force_mat_nosave',false,@islogical) ;
 addOptional(p,'list_to_map_in',[]) ;
 addOptional(p,'dataType','double',@isstr) ;
 addOptional(p,'in_prec',2,@isint) ;
+addOptional(p,'force_as_gridlist',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 xres = p.Results.xres ;
@@ -27,6 +28,7 @@ lat_orient = p.Results.lat_orient ;
 lon_orient = p.Results.lon_orient ;
 dataType = p.Results.dataType ;
 in_prec = p.Results.in_prec ;
+force_as_gridlist = p.Results.force_as_gridlist ;
 
 if ~isempty(lat_orient) && ~(strcmp(lat_orient,'lower') || strcmp(lat_orient,'center')  || strcmp(lat_orient,'upper'))
     error(['If providing lat_orient, it must be either lower, center, or upper. (' lat_orient ')'])
@@ -140,7 +142,8 @@ else
         'verbose',verbose,...
         'verboseIfNoMat',verboseIfNoMat,...
         'dont_save_MAT',force_mat_nosave,...
-        'do_save_MAT',force_mat_save) ;
+        'do_save_MAT',force_mat_save, ...
+        'force_as_gridlist',force_as_gridlist) ;
     is_gridlist = size(in_table,2)==2 ;
     
     % Make maps
