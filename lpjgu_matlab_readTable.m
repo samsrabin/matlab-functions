@@ -32,11 +32,14 @@ if verboseIfNoMat && verbose
 end
 
 % If in_file is symlink, replace it with its target
-[s,w] = unix(['[[ -L ' in_file ' ]] && echo true']) ;
-if s==0 && contains(w,'true') % is symlink
-    disp('Symlink; pointing to target instead.')
-    [~,w] = unix(['stat -f "%Y" ' in_file]) ;
-    in_file = regexprep(w,'[\n\r]+','') ; % Remove extraneous newline
+in_file = get_link_target(in_file) ;
+
+% If file doesn't exist, check to see if its zipped version does. If so,
+% but it's a symlink, replace it with its target.
+in_file_gz = [in_file '.gz'] ;
+in_file_gz_target = get_link_target(in_file_gz) ;
+if ~strcmp(in_file_gz, in_file_gz_target)
+    in_file = in_file_gz_target ;
 end
 
 % If in_file has wildcard, expand into full filename (fail if not exactly 1
@@ -111,8 +114,10 @@ end
 
 function did_unzip = gunzip_if_needed(in_file, verbose, verboseIfNoMat, dispPrefix)
 did_unzip = false ;
+in_file = get_link_target(in_file) ;
 if ~exist(in_file,'file')
     in_file_gz = [in_file '.gz'] ;
+    in_file_gz = get_link_target(in_file_gz) ;
     if exist(in_file_gz,'file')
         if verbose || verboseIfNoMat
             disp([dispPrefix '   Unzipping in_file...'])
@@ -123,7 +128,7 @@ if ~exist(in_file,'file')
         end
         did_unzip = true ;
     else
-        error('%s: in_file.mat, in_file, and in_file.gz not found.', in_file)
+        error('lpjgu_matlab_readTable:fileNotFound', '%s: in_file.mat, in_file, and in_file.gz not found.', in_file)
     end
 end
 end
@@ -310,3 +315,39 @@ for f = 1:length(out_header)
     end
 end
 end
+
+
+function path_out = get_link_target(path_in)
+
+path_out = path_in ;
+
+try
+    % 1 if path_in and is a link; 0 otherwise
+    [status, result] = system(sprintf('[[ -h %s ]] && printf 1 || printf 0', path_in)) ;
+
+    % If it's a link, try to read it.
+    command_list = { ...
+        'printf $(readlink -f %s)' ;
+        'printf $(greadlink -f %s)' ;
+        'printf $(/sw/bin/greadlink -f %s)' ;
+        } ;
+
+    if status==0 && strcmp(result, '1')
+        for c = 1:length(command_list)
+            [status, result] = system(sprintf(command_list{c}, path_in)) ;
+            if status == 0
+                path_out = result ;
+                break
+            end
+        end
+    end
+catch ME
+end
+
+end
+
+
+
+
+
+

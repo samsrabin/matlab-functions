@@ -68,7 +68,7 @@ end
 ok_to_save = ~force_mat_nosave && isempty(target) ;
 
 % Find file
-[NAME, EXT] = process_filename(in_file, verbose) ;
+[in_file, NAME, EXT] = process_filename(in_file, verbose) ;
 
 % Import
 if contains(in_file, '.garr.mat') && strcmp('.garr.mat', in_file(end-(length('.garr.mat')-1):end))
@@ -76,46 +76,100 @@ if contains(in_file, '.garr.mat') && strcmp('.garr.mat', in_file(end-(length('.g
 else
     in_matfile_garr = [in_file '.garr.mat'] ;
 end
+in_matfile_garr = get_link_target(in_matfile_garr) ;
+in_matfile_garr = get_link_target(strrep(in_matfile_garr, '.gz', '')) ;
+
 is_no_mat = true ;
-if exist(in_matfile_garr,'file') && isempty(target)
-    if verbose
-        disp([NAME EXT ':'])
-        disp('   Loading geoArray MAT-file...')
-    end
-    try
-        load(in_matfile_garr) ; %#ok<LOAD>
-    catch ME
-        warning('Problem loading MAT file. Will try again (once) in 10 minutes.\nIntercepted error message follows:\n%s\n', ...
-            ME.message) ;
-        pause(600)
-    end
-    
-    is_no_mat = false ;
-    
-    had_yxv = isfield(out_struct, 'garr_yxv') ;
-    if had_yxv
-        if ~ok_to_save
-            warning('%s contains garr_yxv! Permuting...', in_matfile_garr)
-        else
-            warning('%s contains garr_yxv! Permuting and re-saving...', in_matfile_garr)
+if exist(in_matfile_garr,'file')
+    if isempty(target)
+        if verbose
+            disp([NAME EXT ':'])
+            disp('   Loading geoArray MAT-file...')
         end
-        tmp = permute(out_struct.garr_yxv, [2 3 1]) ;
-        out_struct = rmfield(out_struct, 'garr_yxv') ;
-        out_struct.garr_xvy = tmp ;
-        clear tmp
+        try
+            load(in_matfile_garr) ; %#ok<LOAD>
+        catch ME
+            warning('Problem loading MAT file. Will try again (once) in 10 minutes.\nIntercepted error message follows:\n%s\n', ...
+                ME.message) ;
+            pause(600)
+        end
+
+        is_no_mat = false ;
+
+        had_yxv = isfield(out_struct, 'garr_yxv') ;
+        if had_yxv
+            if ~ok_to_save
+                warning('%s contains garr_yxv! Permuting...', in_matfile_garr)
+            else
+                warning('%s contains garr_yxv! Permuting and re-saving...', in_matfile_garr)
+            end
+            tmp = permute(out_struct.garr_yxv, [2 3 1]) ;
+            out_struct = rmfield(out_struct, 'garr_yxv') ;
+            out_struct.garr_xvy = tmp ;
+            clear tmp
+        end
+
+        unnecessary_yrdim = isfield(out_struct, 'garr_xvy') && size(out_struct.garr_xvy,3)==1 ;
+        if unnecessary_yrdim
+            warning('%s contains unnecessary year dimension. Removing. Will re-save.', in_matfile_garr)
+            tmp = out_struct.garr_xvy ;
+            out_struct = rmfield(out_struct, 'garr_xvy') ;
+            out_struct.garr_xv = tmp ;
+            clear tmp
+        end
+
+        has_years = isfield(out_struct, 'garr_xvy') ;
+    else
+        
+        % Try reading garray and forcing to conform
+        if verbose
+            disp([NAME EXT ':'])
+            disp('   Loading geoArray MAT-file...')
+        end
+        try
+            load(in_matfile_garr) ; %#ok<LOAD>
+        catch ME
+            warning('Problem loading MAT file. Will try again (once) in 10 minutes.\nIntercepted error message follows:\n%s\n', ...
+                ME.message) ;
+            pause(600)
+        end
+        
+        if ~isequal(target{1}, out_struct.lonlats)
+            in_struct = out_struct ;
+            clear out_struct
+
+            [~,~,IB_lonlats] = intersect(target{1}, in_struct.lonlats, 'stable', 'rows') ;
+            [~,~,IB_list2map] = intersect(target{2}, in_struct.list2map, 'stable') ;
+            if isequal(IB_lonlats, IB_list2map)
+                out_struct.lonlats = target{1} ;
+                out_struct.list2map = target{2} ;
+                out_struct.varNames = in_struct.varNames ;
+                in_fields = fieldnames(in_struct) ;
+                in_fields(contains(in_fields, {'lonlats', 'list2map', 'varNames'})) = [] ;
+                if isfield(in_struct, 'yearList')
+                    out_struct.yearList = in_struct.yearList ;
+                    in_fields(strcmp(in_fields, 'yearList')) = [] ;
+                end
+                if isfield(in_struct, 'garr_xvy')
+                    out_struct.garr_xvy = in_struct.garr_xvy ;
+                    in_fields(strcmp(in_fields, 'garr_xvy')) = [] ;
+                end
+                if isfield(in_struct, 'garr_xv')
+                    out_struct.garr_xv = in_struct.garr_xv ;
+                    in_fields(strcmp(in_fields, 'garr_xv')) = [] ;
+                end
+                if ~isempty(in_fields)
+                    warning('Translating original garray to match target: Ignoring %d fields', length(in_fields))
+                end
+
+            end
+        end
+                
     end
-    
-    unnecessary_yrdim = isfield(out_struct, 'garr_xvy') && size(out_struct.garr_xvy,3)==1 ;
-    if unnecessary_yrdim
-        warning('%s contains unnecessary year dimension. Removing. Will re-save.', in_matfile_garr)
-        tmp = out_struct.garr_xvy ;
-        out_struct = rmfield(out_struct, 'garr_xvy') ;
-        out_struct.garr_xv = tmp ;
-        clear tmp
-    end
-    
-    has_years = isfield(out_struct, 'garr_xvy') ;
-else
+end
+
+% If you didn't read a MAT file, try starting from scratch
+if ~exist('out_struct', 'var')
     if verboseIfNoMat || verbose
         disp([NAME EXT ':'])
     end
@@ -270,7 +324,7 @@ end
 end
 
 
-function [NAME, EXT] = process_filename(in_file, verbose)
+function [in_file, NAME, EXT] = process_filename(in_file, verbose)
 
 if strcmp(in_file(end-2:end),'.gz')
     in_file = in_file(1:end-3) ;
@@ -278,14 +332,25 @@ elseif strcmp(in_file(end-3:end),'.mat')
     in_file = in_file(1:end-4) ;
 end
 
+% % If in_file is symlink, replace it with its target
+% [s,w] = unix(['[[ -L ' in_file ' ]] && echo true']) ;
+% if s==0 && contains(w,'true') % is symlink
+%     if verbose
+%         disp('Symlink; pointing to target instead.')
+%     end
+%     [~,w] = unix(['stat -f "%Y" ' in_file]) ;
+%     in_file = regexprep(w,'[\n\r]+','') ; % Remove extraneous newline
+% end
+
 % If in_file is symlink, replace it with its target
-[s,w] = unix(['[[ -L ' in_file ' ]] && echo true']) ;
-if s==0 && contains(w,'true') % is symlink
-    if verbose
-        disp('Symlink; pointing to target instead.')
-    end
-    [~,w] = unix(['stat -f "%Y" ' in_file]) ;
-    in_file = regexprep(w,'[\n\r]+','') ; % Remove extraneous newline
+in_file = get_link_target(in_file) ;
+
+% If file doesn't exist, check to see if its zipped version does. If so,
+% but it's a symlink, replace it with its target.
+in_file_gz = [in_file '.gz'] ;
+in_file_gz_target = get_link_target(in_file_gz) ;
+if ~strcmp(in_file_gz, in_file_gz_target)
+    in_file = in_file_gz_target ;
 end
 
 % If in_file has wildcard, expand into full filename (fail if not exactly 1
@@ -337,6 +402,34 @@ end
 end
 
 
+function path_out = get_link_target(path_in)
+
+path_out = path_in ;
+
+try
+    % 1 if path_in and is a link; 0 otherwise
+    [status, result] = system(sprintf('[[ -h %s ]] && printf 1 || printf 0', path_in)) ;
+
+    % If it's a link, try to read it.
+    command_list = { ...
+        'printf $(readlink -f %s)' ;
+        'printf $(greadlink -f %s)' ;
+        'printf $(/sw/bin/greadlink -f %s)' ;
+        } ;
+
+    if status==0 && strcmp(result, '1')
+        for c = 1:length(command_list)
+            [status, result] = system(sprintf(command_list{c}, path_in)) ;
+            if status == 0
+                path_out = result ;
+                break
+            end
+        end
+    end
+catch ME
+end
+
+end
 
 
 
