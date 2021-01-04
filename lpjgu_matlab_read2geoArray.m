@@ -261,6 +261,9 @@ if ~exist('out_struct', 'var')
         disp('   Reshaping...')
     end
     if ~has_years
+        if any(strcmp(table_in.Properties.VariableNames,'Year'))
+            table_in.Year = [] ;
+        end
         garr_xv = table2array(table_in(:,3:end)) ;
         if ~strcmp(dataType, 'double')
             eval(sprintf('garr_xv = %s(garr_xv) ;', dataType)) ;
