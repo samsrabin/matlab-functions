@@ -54,13 +54,13 @@ end
 lonlats_target = [] ;
 list2map_target = [] ;
 if ~isempty(target) %#ok<USENS>
-    lonlats_target = target{1} ; %#ok<IDISVAR>
+    lonlats_target = target{1} ;
     if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
         error('lonlats_target is malformed (must be Nx2 array)')
     end
     list2map_target = target{2} ;
-    if ~isvector(list2map_target)
-        error('list2map_target is malformed (must be vector)')
+    if ~isempty(list2map_target) && ~isvector(list2map_target)
+        error('list2map_target is malformed (must be vector or empty)')
     end
 end
 
