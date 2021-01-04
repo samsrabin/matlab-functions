@@ -80,6 +80,13 @@ else
     if verbose || verboseIfNoMat
         disp([dispPrefix '   Making table...'])
     end
+    
+    % Error if empty
+    finfo = dir(in_file) ;
+    if finfo.bytes == 0
+        error('lpjgu_matlab_readTable:fileEmpty', '%s: file is empty!', in_file)
+    end
+    
     out_table = import_this_to_table( ...
         in_file, verbose, verboseIfNoMat, dispPrefix, force_as_gridlist) ;
     if ~dont_save_MAT
