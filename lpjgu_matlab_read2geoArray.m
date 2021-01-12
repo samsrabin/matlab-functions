@@ -169,6 +169,7 @@ if exist(in_matfile_garr,'file')
 end
 
 % If you didn't read a MAT file, try starting from scratch
+is_gridlist = false ;
 if ~exist('out_struct', 'var')
     if verboseIfNoMat || verbose
         disp([NAME EXT ':'])
@@ -182,105 +183,128 @@ if ~exist('out_struct', 'var')
         'do_save_MAT',false) ;
     is_gridlist = size(table_in,2)==2 ;
     if is_gridlist
-        error('This file appears to be a gridlist. Will not make a geoArray.')
-    end
-    
-    if verboseIfNoMat || verbose
-        disp('    Getting metadata...')
-    end
-    
-    % Get lat/lons and map indices
-    lonlats_in = unique(table2array(table_in(:,1:2)), ...
-        'rows', 'stable') ;
-    out_struct.lonlats = lonlats_in ;
-    Ncells = length(lonlats_in) ;
-    if isempty(lonlats_target)
-        out_struct.list2map = get_indices( ...
-            lonlats_in, xres, yres, ...
-            list2map_target, ...
-            lat_orient, lon_orient, ...
-            verboseIfNoMat, verbose, in_prec) ;
-    end
-    
-    % Get variable names
-    varNames = setdiff(table_in.Properties.VariableNames, ...
-        {'Lon','Lat','Year'}, ...
-        'stable') ;
-    Nvars = length(varNames) ;
-    out_struct.varNames = varNames ;
-    
-    
-    
-    % Get years (if necessary)
-    has_years = any(strcmp(table_in.Properties.VariableNames,'Year')) ...
-        && length(unique(table_in.Year)) > 1 ;
-    if has_years
-        yearList = unique(table_in.Year) ;
-        Nyears = length(yearList) ;
-        if trimfirstyear_ifneeded && length(find(table_in.Year==yearList(1))) < length(find(table_in.Year==yearList(2)))
-            table_in(table_in.Year==yearList(1),:) = [] ;
-            yearList = yearList(2:end) ;
-            Nyears = length(yearList) ;
-        end
-        if length(table_in.Lon) ~= Ncells*Nyears
-            if ~isempty(lonlats_target)
-                % Remove cells and/or rearrange to match target
-                tmp_lonlats_in = [table_in.Lon table_in.Lat] ;
-                [missing_from_readin, M_in] = setdiff(lonlats_target, lonlats_in, 'rows') ;
-                [missing_from_target, M_target] = setdiff(lonlats_in, lonlats_target, 'rows') ;
-                if ~isempty(M_in)
-                    error('Gridlist mismatch: Not all lonlats_target in out_struct.lonlats (e.g. %0.2f %0.2f)', ...
-                        missing_from_readin(1,1), missing_from_readin(1,2))
-                end
-                if ~isempty(M_target)
-                    warning('length(table_in.Lon) ~= Ncells*Nyears. Trying to fix by removing %d gridcells not in target', ...
-                        length(M_target))
-                    
-                    lonlats_in(M_target,:) = [] ;
-                    out_struct.list2map(M_target) = [] ;
-                    out_struct.lonlats = lonlats_in ;
-                    Ncells = size(lonlats_in,1) ;
-                    for c = 1:size(missing_from_target,1)
-                        thisLon = missing_from_target(c,1) ;
-                        thisLat = missing_from_target(c,2) ;
-                        table_in(table_in.Lon==thisLon & table_in.Lat==thisLat) = [] ;
-                    end
-                    if length(table_in.Lon) ~= Ncells*Nyears
-                        error('length(table_in.Lon) ~= Ncells*Nyears, even after removing cells not in target gridlist')
-                    end
-                end
-            else
-                error('length(table_in.Lon) ~= Ncells*Nyears')
-            end
-        end
-        out_struct.yearList = yearList ;
-    end
-    
-    % Reshape to array
-    if verboseIfNoMat || verbose
-        disp('   Reshaping...')
-    end
-    if ~has_years
-        if any(strcmp(table_in.Properties.VariableNames,'Year'))
-            table_in.Year = [] ;
-        end
-        garr_xv = table2array(table_in(:,3:end)) ;
-        if ~strcmp(dataType, 'double')
-            eval(sprintf('garr_xv = %s(garr_xv) ;', dataType)) ;
-        end
-        out_struct.garr_xv = garr_xv ;
+        warning('This file appears to be a gridlist. Will not make a geoArray.')
+        
+        out_struct = lpjgu_matlab_readTable_then2map(in_file,...
+            'verbose',verbose,...
+            'verboseIfNoMat',verboseIfNoMat,...
+            'force_mat_save',true,...
+            'force_mat_nosave',false) ;
+        
+        % Rename field
+        out_struct.list2map = out_struct.list_to_map ;
+        out_struct = rmfield(out_struct, 'list_to_map') ;
+        
+        % Get lonlats
+        xres = 360 / size(out_struct.mask_YX, 2) ;
+        yres = 180 / size(out_struct.mask_YX, 1) ;
+        lons_map_YX = repmat((-180+xres/2):xres:180, [180/yres 1]) ;
+        lats_map_YX = repmat(transpose((-90+yres/2):yres:90), [1 360/xres]) ;
+        lons_out = lons_map_YX(out_struct.list2map) ;
+        lats_out = lats_map_YX(out_struct.list2map) ;
+        out_struct.lonlats = [lons_out lats_out] ;
+                
     else
-        garr_yxv = lpjgu_matlab_table2array(table_in(:,4:end), [Nyears Ncells Nvars]) ;
-        if ~strcmp(dataType, 'double')
-            eval(sprintf('garr_yxv = %s(garr_yxv) ;', dataType)) ;
+        
+        if verboseIfNoMat || verbose
+            disp('    Getting metadata...')
         end
-        out_struct.garr_xvy = permute(garr_yxv, [2 3 1]) ;
+        
+        % Get lat/lons and map indices
+        lonlats_in = unique(table2array(table_in(:,1:2)), ...
+            'rows', 'stable') ;
+        out_struct.lonlats = lonlats_in ;
+        Ncells = length(lonlats_in) ;
+        if isempty(lonlats_target)
+            out_struct.list2map = get_indices( ...
+                lonlats_in, xres, yres, ...
+                list2map_target, ...
+                lat_orient, lon_orient, ...
+                verboseIfNoMat, verbose, in_prec) ;
+        end
+        
+        % Get variable names
+        varNames = setdiff(table_in.Properties.VariableNames, ...
+            {'Lon','Lat','Year'}, ...
+            'stable') ;
+        Nvars = length(varNames) ;
+        out_struct.varNames = varNames ;
+        
+        % Get years (if necessary)
+        has_years = any(strcmp(table_in.Properties.VariableNames,'Year')) ...
+            && length(unique(table_in.Year)) > 1 ;
+        if has_years
+            yearList = unique(table_in.Year) ;
+            Nyears = length(yearList) ;
+            if trimfirstyear_ifneeded && length(find(table_in.Year==yearList(1))) < length(find(table_in.Year==yearList(2)))
+                table_in(table_in.Year==yearList(1),:) = [] ;
+                yearList = yearList(2:end) ;
+                Nyears = length(yearList) ;
+            end
+            if length(table_in.Lon) ~= Ncells*Nyears
+                if ~isempty(lonlats_target)
+                    % Remove cells and/or rearrange to match target
+                    tmp_lonlats_in = [table_in.Lon table_in.Lat] ;
+                    [missing_from_readin, M_in] = setdiff(lonlats_target, lonlats_in, 'rows') ;
+                    [missing_from_target, M_target] = setdiff(lonlats_in, lonlats_target, 'rows') ;
+                    if ~isempty(M_in)
+                        error('Gridlist mismatch: Not all lonlats_target in out_struct.lonlats (e.g. %0.2f %0.2f)', ...
+                            missing_from_readin(1,1), missing_from_readin(1,2))
+                    end
+                    if ~isempty(M_target)
+                        warning('length(table_in.Lon) ~= Ncells*Nyears. Trying to fix by removing %d gridcells not in target', ...
+                            length(M_target))
+                        
+                        lonlats_in(M_target,:) = [] ;
+                        out_struct.list2map(M_target) = [] ;
+                        out_struct.lonlats = lonlats_in ;
+                        Ncells = size(lonlats_in,1) ;
+                        for c = 1:size(missing_from_target,1)
+                            thisLon = missing_from_target(c,1) ;
+                            thisLat = missing_from_target(c,2) ;
+                            table_in(table_in.Lon==thisLon & table_in.Lat==thisLat) = [] ;
+                        end
+                        if length(table_in.Lon) ~= Ncells*Nyears
+                            error('length(table_in.Lon) ~= Ncells*Nyears, even after removing cells not in target gridlist')
+                        end
+                    end
+                else
+                    error('length(table_in.Lon) ~= Ncells*Nyears')
+                end
+            end
+            out_struct.yearList = yearList ;
+        end
+        
+        % Reshape to array
+        if verboseIfNoMat || verbose
+            disp('   Reshaping...')
+        end
+        if ~has_years
+            if any(strcmp(table_in.Properties.VariableNames,'Year'))
+                table_in.Year = [] ;
+            end
+            garr_xv = table2array(table_in(:,3:end)) ;
+            if ~strcmp(dataType, 'double')
+                eval(sprintf('garr_xv = %s(garr_xv) ;', dataType)) ;
+            end
+            out_struct.garr_xv = garr_xv ;
+        else
+            garr_yxv = lpjgu_matlab_table2array(table_in(:,4:end), [Nyears Ncells Nvars]) ;
+            if ~strcmp(dataType, 'double')
+                eval(sprintf('garr_yxv = %s(garr_yxv) ;', dataType)) ;
+            end
+            out_struct.garr_xvy = permute(garr_yxv, [2 3 1]) ;
+        end
+        
     end
     
 end
 
 % Remove cells and/or rearrange to match target
 if ~isempty(lonlats_target)
+    if is_gridlist
+        warning('You''re editing a gridlist to match a target. Be sure this is something you want to do!') ;
+    end
     extra_cells = [] ;
     rearr_cells = [] ;
     if ~isequal(lonlats_target, out_struct.lonlats)
@@ -299,18 +323,23 @@ if ~isempty(lonlats_target)
     end
     out_struct.list2map = list2map_target ;
     out_struct.lonlats = lonlats_target ;
-    if ~isempty(extra_cells)
-        if ~has_years
-            out_struct.garr_xv(extra_cells,:) = [] ;
-        else
-            out_struct.garr_xvy(extra_cells,:,:) = [] ;
+    if is_gridlist
+        out_struct.mask_YX = false(size(out_struct.mask_YX)) ;
+        out_struct.mask_YX(out_struct.list2map) = true ;
+    else
+        if ~isempty(extra_cells)
+            if ~has_years
+                out_struct.garr_xv(extra_cells,:) = [] ;
+            else
+                out_struct.garr_xvy(extra_cells,:,:) = [] ;
+            end
         end
-    end
-    if ~isempty(rearr_cells)
-        if ~has_years
-            out_struct.garr_xv = out_struct.garr_xv(rearr_cells,:) ;
-        else
-            out_struct.garr_xvy = out_struct.garr_xvy(rearr_cells,:,:) ;
+        if ~isempty(rearr_cells)
+            if ~has_years
+                out_struct.garr_xv = out_struct.garr_xv(rearr_cells,:) ;
+            else
+                out_struct.garr_xvy = out_struct.garr_xvy(rearr_cells,:,:) ;
+            end
         end
     end
 end
