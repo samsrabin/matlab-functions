@@ -3,11 +3,15 @@ function lpjgu_matlab_saveTable(in_forHead,out_array,out_file,varargin)
 all_are_intORempty = @(x) all(isint(x)) | isempty(x) ;
 is_nonneg_int = @(x) isint(x) & x>=0 & numel(x)==1 ;
 
+is_ok_struct = @(x) isstruct(x) ...
+    & (all(isfield(x, {'garr_xvy', 'yearList'})) | isfield(x, 'garr_xv')) ...
+    & all(isfield(x, {'lonlats', 'list2map', 'varNames'})) ;
+
 % Set up & parse input arguments
 p = inputParser ;
 addRequired(p,'in_forHead') ;
 addRequired(p,'out_array',...
-    @(x) istable(x) || (ismatrix(x) && ~isvector(x))) ;
+    @(x) is_ok_struct(x) || istable(x) || (ismatrix(x) && ~isvector(x))) ;
 addRequired(p,'out_file',@ischar) ;
 addParameter(p,'outPrec',3,is_nonneg_int) ;
 addParameter(p,'outPrec_lonlat',2,is_nonneg_int) ;
@@ -19,7 +23,7 @@ addParameter(p,'dataAlign','L',...
 addParameter(p,'fancy',false,@islogical) ;
 addParameter(p,'progress_step_pct',5,@isnumeric) ;
 addParameter(p,'save_every_n',1000,@isPositiveIntegerValuedNumeric) ;
-addParameter(p,'save_every_pct',100,@isPositiveIntegerValuedNumeric) ;
+addParameter(p,'save_every_pct',5,@isPositiveIntegerValuedNumeric) ;
 addParameter(p,'delimiter',' ',@ischar) ;
 addParameter(p,'overwrite',false,@islogical) ;
 addParameter(p,'verbose',true,@islogical) ;
@@ -38,7 +42,16 @@ if ~p.Results.overwrite && exist(out_file,'file')
 end
 
 % Get header
-if ischar(in_forHead)
+if isstruct(out_array)
+    if isfield(out_array, 'garr_xvy')
+        in_header_cell = [{'Lon', 'Lat', 'Year'} out_array.varNames] ;
+    elseif isfield(out_array, 'garr_xv')
+        in_header_cell = [{'Lon', 'Lat'} out_array.varNames] ;
+    else
+        error('in_data has neither garr_xvy nor garr_xv')
+    end
+    in_header_str = [] ;
+elseif ischar(in_forHead)
     fileID_in = fopen(in_forHead) ;
     in_header_str = fgetl(fileID_in) ;
     fclose(fileID_in) ;
@@ -61,11 +74,22 @@ else
     error('in_forHead not valid.')
 end
 
-% Some array values may be "-0", which MATLAB treats as equal to "0", but 
-% which can end up being printed as -0 due to different IEEE
-% representations.
-% https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
-out_array(out_array==0) = 0 ;
+% NOW DOING THIS IN THE ACTUAL FUNCTIONS
+% % Some array values may be "-0", which MATLAB treats as equal to "0", but 
+% % which can end up being printed as -0 due to different IEEE
+% % representations.
+% % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
+% if isstruct(out_array)
+%     if isfield(out_array, 'garr_xvy')
+%         out_array.garr_xvy(out_array.garr_xvy==0) = 0 ;
+%     elseif isfield(out_array, 'garr_xv')
+%         out_array.garr_xv(out_array.garr_xv==0) = 0 ;
+%     else
+%         error('in_data has neither garr_xvy nor garr_xv')
+%     end
+% else
+%     out_array(out_array==0) = 0 ;
+% end
 
 % Write data
 if p.Results.fancy
@@ -83,6 +107,10 @@ end
 end
 
 function write_quiet(in_header_str, in_header_cell, p, out_file, out_array)
+
+if isstruct(out_array)
+    error('Rework write_quiet() to work with structure form of out_array')
+end
 % Make out_header_str
 if isempty(in_header_str)
     % Get maximum length of variable names
@@ -145,8 +173,15 @@ Nrows = size(out_array,1) ;
 
 for i = 1:Nrows
     
+    % Some array values may be "-0", which MATLAB treats as equal to "0", but 
+    % which can end up being printed as -0 due to different IEEE
+    % representations.
+    % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
+    out_line = out_array(i,:) ;
+    out_line(out_line==0) = 0 ;
+    
     % Write line
-    fprintf(fileID_out,out_formatSpec,out_array(i,:)) ;
+    fprintf(fileID_out,out_formatSpec,out_line) ;
     
 end
 
@@ -187,14 +222,14 @@ end
 % Get output file formatSpec
 out_header_cell = in_header_cell ;
 out_formatSpec = '' ;
-for i = 1:length(out_header_cell)
+for ii = 1:length(out_header_cell)
     %     thisCol = out_header_cell{i} ;
-    if i>1
+    if ii>1
         out_formatSpec = [out_formatSpec p.Results.delimiter] ;
     end
-    if i==i_lat || i==i_lon
+    if ii==i_lat || ii==i_lon
         out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) '.' num2str(p.Results.outPrec_lonlat) 'f'] ;
-    elseif i==i_year || any(p.Results.justZeroCols==i)
+    elseif ii==i_year || any(p.Results.justZeroCols==ii)
         out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) 'u'] ;
     else
         out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) '.' num2str(p.Results.outPrec) 'f'] ;
@@ -206,43 +241,133 @@ out_formatSpec = [out_formatSpec ' \n'] ;
 fileID_out = fopen(out_file, 'w') ;
 fprintf(fileID_out,'%s \n', out_header_str) ;
 
-% Write data chunk-by-chunk
-if istable(out_array)
-    out_array = table2array(out_array) ;
-end
-out_array = transpose(out_array) ;
-Nrows = size(out_array,2) ;
-Nchunks = ceil(100 / p.Results.save_every_pct) ;
-chunkSize = ceil(Nrows*100/p.Results.save_every_pct) ;
-
-for i = 1:Nchunks
+% Write data
+if isstruct(out_array)
     
-    % Open
-    fileID_out = fopen(out_file, 'A') ;
+    % Write data cell-by-cell
+    Ncells = length(out_array.list2map) ;
+    chunkSize = floor((p.Results.save_every_pct/100)*Ncells) ;
+    Nchunks = ceil(Ncells / chunkSize) ;
     
-    % Get indices
-    c1 = (i-1)*chunkSize + 1 ;
-    cN = min(i*chunkSize, Nrows) ;
-    
-    fprintf(fileID_out,out_formatSpec,out_array(:,c1:cN)) ;
-    fclose(fileID_out) ;
-    
-    if i~=Nchunks
-        thisPct = round(i/Nchunks*100) ;
-        if rem(i,10)==0
-            formatSpec = '%d%%...\n' ;
-        else
-            formatSpec = '%d%%...' ;
+    for ii = 1:Nchunks
+        fprintf('%d\n', ii)
+        % Open
+        if rem(ii-1, chunkSize)
+            fileID_out = fopen(out_file, 'A') ;
         end
-        fprintf(formatSpec, thisPct) ;
+        
+        % Get indices
+        c1 = (ii-1)*chunkSize + 1 ;
+        cN = min(ii*chunkSize, Ncells) ;
+        thisChunkSize = cN - c1 + 1 ;
+        
+        % Get data array
+        
+        if isfield(out_array, 'garr_xvy')
+            
+            Nyears = length(out_array.yearList) ;
+            
+            col_lons = transpose(repmat(out_array.lonlats(c1:cN,1), [1 Nyears])) ;
+            col_lons = col_lons(:) ;
+            col_lats = transpose(repmat(out_array.lonlats(c1:cN,2), [1 Nyears])) ;
+            col_lats = col_lats(:) ;
+            col_lonlats = [col_lons col_lats] ;
+            
+            col_years = repmat(shiftdim(out_array.yearList), [thisChunkSize 1]) ;
+            
+%             out_array_tmp = cat(2, ...
+%                 repmat(out_array.lonlats(ii,:), [Nyears 1]), ...
+%                 Nyears*ones(Nyears,1)) ;
+%             out_array_tmp2 = out_array.garr_xvy(ii,:,:) ;
+%             out_array_tmp2 = squeeze(out_array_tmp2) ;
+%             out_array_tmp2 = out_array_tmp2' ;
+%             out_array_tmp = cat(2, out_array_tmp, out_array_tmp2) ;
+
+            out_array_tmp2 = out_array.garr_xvy(c1:cN,:,:) ;
+            out_array_tmp2 = permute(out_array_tmp2, [3 1 2]) ;
+            out_array_tmp2 = reshape(out_array_tmp2, [thisChunkSize*Nyears size(out_array_tmp2,3)]) ;
+            out_array_tmp2(1:300,1:9)
+            
+            out_array_tmp = cat(2, ...
+                col_lonlats, ...
+                col_years, ...
+                out_array_tmp2) ;
+        elseif isfield(out_array, 'garr_xv')
+            out_array_tmp = cat(2, ...
+                out_array.lonlats(ii,:), ...
+                out_array.garr_xv(ii,:)) ;
+        else
+            error('in_data has neither garr_xvy nor garr_xv')
+        end
+        
+        % Some array values may be "-0", which MATLAB treats as equal to "0", but
+        % which can end up being printed as -0 due to different IEEE
+        % representations.
+        % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
+        out_array_tmp(out_array_tmp==0) = 0 ;
+        
+        fprintf(fileID_out,out_formatSpec,out_array_tmp) ;
+        
+        fclose(fileID_out) ;
+        thisPct = round(ii/Ncells*100) ;
+        fprintf('%d%%...\n', thisPct) ;
         pause(0.1)
+        break
+                
     end
     
+else
+    
+    % Write data chunk-by-chunk
+    if istable(out_array)
+        out_array = table2array(out_array) ;
+    end
+    out_array = transpose(out_array) ;
+    Nrows = size(out_array,2) ;
+    Nchunks = ceil(100 / p.Results.save_every_pct) ;
+    chunkSize = ceil(Nrows*100/p.Results.save_every_pct) ;
+    
+    for ii = 1:Nchunks
+        
+        % Open
+        fileID_out = fopen(out_file, 'A') ;
+        
+        % Get indices
+        c1 = (ii-1)*chunkSize + 1 ;
+        cN = min(ii*chunkSize, Nrows) ;
+        
+        % Some array values may be "-0", which MATLAB treats as equal to "0", but
+        % which can end up being printed as -0 due to different IEEE
+        % representations.
+        % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
+        out_array_tmp = out_array(:,c1:cN) ;
+        out_array_tmp(out_array_tmp==0) = 0 ;
+        
+        fprintf(fileID_out,out_formatSpec,out_array_tmp) ;
+        fclose(fileID_out) ;
+        
+        if ii~=Nchunks
+            thisPct = round(ii/Nchunks*100) ;
+            if rem(ii,10)==0
+                formatSpec = '%d%%...\n' ;
+            else
+                formatSpec = '%d%%...' ;
+            end
+            fprintf(formatSpec, thisPct) ;
+            pause(0.1)
+        end
+        
+    end
 end
 
 end
 
 function write_fancy(in_header_str, in_header_cell, p, out_file, out_array)
+
+if isstruct(out_array)
+    error('Rework write_fancy() to work with structure form of out_array')
+end
+
 % Make out_header_str
 Nvars = length(in_header_cell) ;
 if isempty(in_header_str)
