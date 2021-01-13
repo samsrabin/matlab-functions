@@ -20,6 +20,10 @@ addOptional(p,'target',{},is_2elem_cell) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
+if isempty(in_file)
+    error('in_file is empty')
+end
+
 pFields = fieldnames(p.Results) ;
 Nfields = length(pFields) ;
 for f = 1:Nfields
