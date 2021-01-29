@@ -28,6 +28,7 @@ addParameter(p,'delimiter',' ',@ischar) ;
 addParameter(p,'overwrite',false,@islogical) ;
 addParameter(p,'verbose',true,@islogical) ;
 addParameter(p,'justZeroCols',[],all_are_intORempty) ;
+addParameter(p,'gzip',false,@islogical) ;
 parse(p,in_forHead,out_array,out_file,varargin{:});
 
 if p.Results.save_every_n>uint32(inf)
@@ -98,6 +99,13 @@ elseif p.Results.verbose
     write_fast(in_header_str, in_header_cell, p, out_file, out_array) ;
 else
     write_quiet(in_header_str, in_header_cell, p, out_file, out_array) ;
+end
+
+% Zip data
+if p.Results.gzip
+    disp('Zipping...')
+    gzip(out_file)
+    delete(out_file)
 end
 
 if p.Results.verbose
