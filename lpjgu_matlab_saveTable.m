@@ -248,6 +248,7 @@ out_formatSpec = [out_formatSpec ' \n'] ;
 % Save header
 fileID_out = fopen(out_file, 'w') ;
 fprintf(fileID_out,'%s \n', out_header_str) ;
+fclose(fileID_out) ;
 
 % Write data
 if isstruct(out_array)
@@ -258,11 +259,8 @@ if isstruct(out_array)
     Nchunks = ceil(Ncells / chunkSize) ;
     
     for ii = 1:Nchunks
-        fprintf('%d\n', ii)
         % Open
-        if rem(ii-1, chunkSize)
-            fileID_out = fopen(out_file, 'A') ;
-        end
+        fileID_out = fopen(out_file, 'A') ;
         
         % Get indices
         c1 = (ii-1)*chunkSize + 1 ;
@@ -294,7 +292,6 @@ if isstruct(out_array)
             out_array_tmp2 = out_array.garr_xvy(c1:cN,:,:) ;
             out_array_tmp2 = permute(out_array_tmp2, [3 1 2]) ;
             out_array_tmp2 = reshape(out_array_tmp2, [thisChunkSize*Nyears size(out_array_tmp2,3)]) ;
-            out_array_tmp2(1:300,1:9)
             
             out_array_tmp = cat(2, ...
                 col_lonlats, ...
@@ -302,8 +299,8 @@ if isstruct(out_array)
                 out_array_tmp2) ;
         elseif isfield(out_array, 'garr_xv')
             out_array_tmp = cat(2, ...
-                out_array.lonlats(ii,:), ...
-                out_array.garr_xv(ii,:)) ;
+                out_array.lonlats(c1:cN,:), ...
+                out_array.garr_xv(c1:cN,:)) ;
         else
             error('in_data has neither garr_xvy nor garr_xv')
         end
@@ -314,13 +311,12 @@ if isstruct(out_array)
         % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
         out_array_tmp(out_array_tmp==0) = 0 ;
         
-        fprintf(fileID_out,out_formatSpec,out_array_tmp) ;
+        fprintf(fileID_out,out_formatSpec,out_array_tmp') ;
         
         fclose(fileID_out) ;
-        thisPct = round(ii/Ncells*100) ;
+        thisPct = round(ii/Nchunks*100) ;
         fprintf('%d%%...\n', thisPct) ;
         pause(0.1)
-        break
                 
     end
     
