@@ -1,7 +1,7 @@
 function map_YXz = lpjgu_xz_to_YXz(in_matrix, map_size, list2map)
 
-if ~ismatrix(in_matrix) || min(size(in_matrix))==1
-    error('in_matrix must be a matrix')
+if ~ismatrix(in_matrix)
+    error('in_matrix must be a vector or 2-d array')
 elseif size(in_matrix,1) ~= length(list2map)
     error('in_matrix (size1 %d) must have same first-dim size as list2map (size1 %d)', size(in_matrix,1), length(list2map))
 end
