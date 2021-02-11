@@ -103,6 +103,9 @@ function print2eps(name, fig, export_options, varargin)
 % 14/05/19: Made Helvetica the top default font-swap, replacing Courier
 % 12/06/19: Issue #277: Enabled preservation of figure's PaperSize in output PDF/EPS file
 % 06/08/19: Issue #281: only fix patch/textbox color if it's not opaque
+% 15/01/20: Added warning ID for easier suppression by users
+% 20/01/20: Added comment about unsupported patch transparency in some Ghostscript versions (issue #285)
+% 10/12/20: Enabled user-specified regexp replacements in the generated EPS file (issue #324)
 %}
 
     options = {'-loose'};
@@ -355,7 +358,7 @@ function print2eps(name, fig, export_options, varargin)
 
     % Bail out if EPS post-processing is not possible
     if isempty(fstrm)
-        warning('Loading EPS file failed, so unable to perform post-processing. This is usually because the figure contains a large number of patch objects. Consider exporting to a bitmap format in this case.');
+        warning('YMA:export_fig:EPS','Loading EPS file failed, so unable to perform post-processing. This is usually because the figure contains a large number of patch objects. Consider exporting to a bitmap format in this case.');
         return
     end
 
@@ -459,10 +462,7 @@ function print2eps(name, fig, export_options, varargin)
         for a = update
             set(font_handles(a), 'FontName', fonts{a}, 'FontSize', fonts_size(a));
         end
-    end
 
-    % Replace the font names
-    if ~isempty(font_swap)
         for a = 1:size(font_swap, 2)
             fontName = font_swap{3,a};
             %fontName = fontName(~isspace(font_swap{3,a}));
@@ -568,6 +568,17 @@ function print2eps(name, fig, export_options, varargin)
     fstrm = regexprep(fstrm, '\n([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) 3 MP\nPP\n\3 \1 \2 3 MP\nPP\n','\n$1 $2 $3 0 0 4 MP\nPP\n');
     fstrm = regexprep(fstrm, '\n([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) 3 MP\nPP\n\3 \2 \1 3 MP\nPP\n','\n$1 $2 $3 0 0 4 MP\nPP\n');
 
+    % If user requested a regexprep replacement of string(s), do this now (issue #324)
+    if ~isempty(export_options.regexprep)
+        try
+            oldStrOrRegexp = export_options.regexprep{1};
+            newStrOrRegexp = export_options.regexprep{2};
+            fstrm = regexprep(fstrm, oldStrOrRegexp, newStrOrRegexp);
+        catch err
+            warning('YMA:export_fig:regexprep', 'Error parsing regexprep: %s', err.message);
+        end
+    end
+
     % Write out the fixed eps file
     read_write_entire_textfile(name, fstrm);
 end
@@ -614,6 +625,8 @@ function [StoredColors, fstrm, foundFlags] = eps_maintainAlpha(fig, fstrm, Store
                 origAlpha = num2str(round(double(origColor(end)) /255,3),'%.3g'); %Convert alpha value for EPS
 
                 %Find and replace the RGBA values within the EPS text fstrm
+                %Note: .setopacityalpha is an unsupported PS extension that croaks in some GS versions (issue #285, https://bugzilla.redhat.com/show_bug.cgi?id=1632030)
+                %      (such cases are caught in eps2pdf.m and corrected by adding the -dNOSAFER Ghosscript option or by removing the .setopacityalpha line)
                 if strcmpi(propName,'Face')
                     oldStr = sprintf(['\n' colorID ' RC\n']);  % ...N\n (removed to fix issue #225)
                     newStr = sprintf(['\n' origRGB ' RC\n' origAlpha ' .setopacityalpha true\n']);  % ...N\n
