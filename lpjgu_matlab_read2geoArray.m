@@ -1,7 +1,7 @@
 function out_struct = lpjgu_matlab_read2geoArray(in_file,varargin)
 
 % Set up & parse input arguments
-is_2elem_cell = @(x) iscell(x) && numel(x)==2 ;
+is_2elem_cell_or_empty = @(x) (iscell(x) && numel(x)==2) || isempty(x) ;
 p = inputParser ;
 addRequired(p,'in_file',@ischar) ;
 addOptional(p,'xres',NaN,@isnumeric) ;
@@ -16,7 +16,7 @@ addOptional(p,'dataType','double',@isstr) ;
 addOptional(p,'in_prec',2,@isint) ;
 % addOptional(p,'lonlats_target',[],is_Nx2_array) ;
 % addOptional(p,'list2map_target',[]) ;
-addOptional(p,'target',{},is_2elem_cell) ;
+addOptional(p,'target',{},is_2elem_cell_or_empty) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
