@@ -16,3 +16,4 @@ kakearney-boundedline/.gitignore
 .ignore
 *.swp
 *.swo
+**/.git*
