@@ -117,18 +117,12 @@ if exist(in_matfile_maps,'file')
         else
             theseMaps = out_struct.maps_YXv ;
         end
-        gltestmap = mean(mean(theseMaps,4),3) ;
-        possiblenewgl = find(~isnan(gltestmap)) ;
+        gltestmap = any(any(~isnan(theseMaps),4),3) ;
+        possiblenewgl = find(gltestmap) ;
         if ~isequal(sort(possiblenewgl),sort(out_struct.list_to_map))
-            consistentnantestmap = sum(sum(isnan(theseMaps),4),3) ;
-            if ~isequal(unique(consistentnantestmap(:)),[0;size(theseMaps,3)*size(theseMaps,4)])
-                warning(sprintf(['out_struct.list_to_map (N=' num2str(length(out_struct.list_to_map)) ') does not match gltestmap (N=' num2str(length(sort(possiblenewgl))) ').'...
-                    '\n...but NaNs are not consistent across variables (and/or years, if included), so not changing.']))
-            else
-                warning(sprintf(['out_struct.list_to_map (N=' num2str(length(out_struct.list_to_map)) ') does not match gltestmap (N=' num2str(length(sort(possiblenewgl))) ').\n'...
-                    '...Fixing.']))
-                out_struct.list_to_map = possiblenewgl ;
-            end
+            warning(sprintf(['out_struct.list_to_map (N=' num2str(length(out_struct.list_to_map)) ') does not match gltestmap (N=' num2str(length(sort(possiblenewgl))) ').\n'...
+                '...Fixing in imported version.']))
+            out_struct.list_to_map = possiblenewgl ;
         end
     end
 else
