@@ -1,7 +1,7 @@
 function out_struct = lpjgu_matlab_read2geoArray(in_file,varargin)
 
 % Set up & parse input arguments
-is_2elem_cell_or_empty = @(x) (iscell(x) && numel(x)==2) || isempty(x) ;
+is_ok_target = @(x) (iscell(x) && numel(x)==2) || isstruct(x) || isempty(x) ;
 p = inputParser ;
 addRequired(p,'in_file',@ischar) ;
 addOptional(p,'xres',NaN,@isnumeric) ;
@@ -16,7 +16,7 @@ addOptional(p,'dataType','double',@isstr) ;
 addOptional(p,'in_prec',2,@isint) ;
 % addOptional(p,'lonlats_target',[],is_Nx2_array) ;
 % addOptional(p,'list2map_target',[]) ;
-addOptional(p,'target',{},is_2elem_cell_or_empty) ;
+addOptional(p,'target',{},is_ok_target) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
@@ -58,13 +58,23 @@ end
 lonlats_target = [] ;
 list2map_target = [] ;
 if ~isempty(target) %#ok<USENS>
-    lonlats_target = target{1} ;
-    if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
-        error('lonlats_target is malformed (must be Nx2 array)')
-    end
-    list2map_target = target{2} ;
-    if ~isempty(list2map_target) && ~isvector(list2map_target)
-        error('list2map_target is malformed (must be vector or empty)')
+    if isstruct(target)
+        lonlats_target = target.lonlats ;
+        list2map_target = target.list2map ;
+    elseif iscell(target)
+        if ~isempty(target) 
+            lonlats_target = target{1} ;
+            if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
+                error('lonlats_target is malformed (must be Nx2 array)')
+            end
+            list2map_target = target{2} ;
+            if ~isempty(list2map_target) && ~isvector(list2map_target)
+                error('list2map_target is malformed (must be vector or empty)')
+            end
+        end
+    else
+        tmp = whos('target') ;
+        error('Input "target" is of invalid class: %s', tmp.class) ;
     end
 end
 
