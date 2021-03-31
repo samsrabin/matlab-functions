@@ -14,9 +14,9 @@ addOptional(p,'force_mat_save',true,@islogical) ;
 addOptional(p,'force_mat_nosave',false,@islogical) ;
 addOptional(p,'dataType','double',@isstr) ;
 addOptional(p,'in_prec',2,@isint) ;
-% addOptional(p,'lonlats_target',[],is_Nx2_array) ;
-% addOptional(p,'list2map_target',[]) ;
 addOptional(p,'target',{},is_ok_target) ;
+addOptional(p,'target_lat_orient','',@isstr) ;
+addOptional(p,'target_lon_orient','',@isstr) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
@@ -319,6 +319,53 @@ if ~isempty(lonlats_target)
     if is_gridlist
         warning('You''re editing a gridlist to match a target. Be sure this is something you want to do!') ;
     end
+    
+    % Adjust longitudes to match target orientation, if needed
+    if exist('lon_orient', 'var') && exist('target_lon_orient', 'var') ...
+    && ~strcmp(lon_orient, target_lon_orient)
+        switch lon_orient
+            case 'left' ; lon_orient_N = 0 ;
+            case 'center' ; lon_orient_N = 1 ;
+            case 'right' ; lon_orient_N = 2 ;
+        end
+        switch target_lon_orient
+            case 'left' ; target_lon_orient_N = 0 ;
+            case 'center' ; target_lon_orient_N = 1 ;
+            case 'right' ; target_lon_orient_N = 2 ;
+        end
+        if ~exist('xres', 'var') || isnan(xres)
+            xres = lpjgu_process_resolution( ...
+                xres, yres, ...
+                out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
+                verboseIfNoMat, verbose) ;
+        end
+        out_struct.lonlats(:,1) = out_struct.lonlats(:,1) ...
+            + xres*(target_lon_orient_N - lon_orient_N)/2 ;
+    end
+    
+    % Adjust latitudes to match target orientation, if needed
+    if exist('lat_orient', 'var') && exist('target_lat_orient', 'var') ...
+    && ~strcmp(lat_orient, target_lat_orient)
+        switch lat_orient
+            case 'lower' ; lat_orient_N = 0 ;
+            case 'center' ; lat_orient_N = 1 ;
+            case 'upper' ; lat_orient_N = 2 ;
+        end
+        switch target_lat_orient
+            case 'lower' ; target_lat_orient_N = 0 ;
+            case 'center' ; target_lat_orient_N = 1 ;
+            case 'upper' ; target_lat_orient_N = 2 ;
+        end
+        if ~exist('yres', 'var') || isnan(yres)
+            yres = lpjgu_process_resolution( ...
+                xres, yres, ...
+                out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
+                verboseIfNoMat, verbose) ;
+        end
+        out_struct.lonlats(:,2) = out_struct.lonlats(:,2) ...
+            + yres*(target_lat_orient_N - lat_orient_N)/2 ;
+    end
+    
     extra_cells = [] ;
     rearr_cells = [] ;
     if ~isequal(lonlats_target, out_struct.lonlats)
