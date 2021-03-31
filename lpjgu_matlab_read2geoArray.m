@@ -63,11 +63,11 @@ if ~isempty(target) %#ok<USENS>
         list2map_target = target.list2map ;
     elseif iscell(target)
         if ~isempty(target) 
-            lonlats_target = target{1} ;
+            lonlats_target = lonlats_target ;
             if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
                 error('lonlats_target is malformed (must be Nx2 array)')
             end
-            list2map_target = target{2} ;
+            list2map_target = list2map_target ;
             if ~isempty(list2map_target) && ~isvector(list2map_target)
                 error('list2map_target is malformed (must be vector or empty)')
             end
@@ -147,16 +147,24 @@ if exist(in_matfile_garr,'file')
                 ME.message) ;
             pause(600)
         end
-        
-        if ~isequal(target{1}, out_struct.lonlats)
+
+        if ~isequal(lonlats_target, out_struct.lonlats)
             in_struct = out_struct ;
             clear out_struct
 
-            [~,~,IB_lonlats] = intersect(target{1}, in_struct.lonlats, 'stable', 'rows') ;
-            [~,~,IB_list2map] = intersect(target{2}, in_struct.list2map, 'stable') ;
-            if isequal(IB_lonlats, IB_list2map)
-                out_struct.lonlats = target{1} ;
-                out_struct.list2map = target{2} ;
+            if isfield(in_struct, 'garr_xvy')
+                out_struct.garr_xvy = nan([length(list2map_target) size(in_struct.garr_xvy,2) size(in_struct.garr_xvy,3)]) ;
+            elseif isfield(in_struct, 'garr_xv')
+                out_struct.garr_xv = nan([length(list2map_target) size(in_struct.garr_xv,2)]) ;
+            else
+                error('in_struct does not appear to include either garr_xvy or garr_xv')
+            end
+
+            [~,IA_lonlats,IB_lonlats] = intersect(lonlats_target, in_struct.lonlats, 'stable', 'rows') ;
+            [~,IA_list2map,IB_list2map] = intersect(list2map_target, in_struct.list2map, 'stable') ;
+            if isequal(IA_lonlats, IA_list2map) && isequal(IB_lonlats, IB_list2map)
+                out_struct.lonlats = lonlats_target ;
+                out_struct.list2map = list2map_target ;
                 out_struct.varNames = in_struct.varNames ;
                 in_fields = fieldnames(in_struct) ;
                 in_fields(contains(in_fields, {'lonlats', 'list2map', 'varNames'})) = [] ;
@@ -165,16 +173,22 @@ if exist(in_matfile_garr,'file')
                     in_fields(strcmp(in_fields, 'yearList')) = [] ;
                 end
                 if isfield(in_struct, 'garr_xvy')
-                    out_struct.garr_xvy = in_struct.garr_xvy ;
+                    out_struct.garr_xvy = nan([length(list2map_target) size(in_struct.garr_xvy,2) size(in_struct.garr_xvy,3)]) ;
+                    out_struct.garr_xvy(IA_lonlats,:,:) = in_struct.garr_xvy(IB_lonlats,:,:) ;
                     in_fields(strcmp(in_fields, 'garr_xvy')) = [] ;
-                end
-                if isfield(in_struct, 'garr_xv')
-                    out_struct.garr_xv = in_struct.garr_xv ;
+                elseif isfield(in_struct, 'garr_xv')
+                    out_struct.garr_xv = nan([length(list2map_target) size(in_struct.garr_xv,2)]) ;
+                    out_struct.garr_xv(IA_lonlats,:) = in_struct.garr_xv(IB_lonlats,:) ;
                     in_fields(strcmp(in_fields, 'garr_xv')) = [] ;
+                else
+                    error('in_struct does not appear to include either garr_xvy or garr_xv')
                 end
                 if ~isempty(in_fields)
                     warning('Translating original garray to match target: Ignoring %d fields', length(in_fields))
                 end
+
+            else
+                error('Disagreement between intersection indices from lonlats and list2map')
 
             end
         end
