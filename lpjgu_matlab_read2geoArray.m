@@ -62,15 +62,13 @@ if ~isempty(target) %#ok<USENS>
         lonlats_target = target.lonlats ;
         list2map_target = target.list2map ;
     elseif iscell(target)
-        if ~isempty(target) 
-            lonlats_target = lonlats_target ;
-            if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
-                error('lonlats_target is malformed (must be Nx2 array)')
-            end
-            list2map_target = list2map_target ;
-            if ~isempty(list2map_target) && ~isvector(list2map_target)
-                error('list2map_target is malformed (must be vector or empty)')
-            end
+        lonlats_target = target{1} ;
+        if ~(ismatrix(lonlats_target) && size(lonlats_target,2)==2)
+            error('lonlats_target is malformed (must be Nx2 array)')
+        end
+        list2map_target = target{2} ;
+        if ~isempty(list2map_target) && ~isvector(list2map_target)
+            error('list2map_target is malformed (must be vector or empty)')
         end
     else
         tmp = whos('target') ;
