@@ -431,9 +431,12 @@ end
 
 function [in_file, NAME, EXT] = process_filename(in_file, verbose)
 
+extension = '' ;
 if strcmp(in_file(end-2:end),'.gz')
+    extension = '.gz' ;
     in_file = in_file(1:end-3) ;
 elseif strcmp(in_file(end-3:end),'.mat')
+    extension = '.mat' ;
     in_file = in_file(1:end-4) ;
 end
 
@@ -454,13 +457,15 @@ in_file = get_link_target(in_file) ;
 % but it's a symlink, replace it with its target.
 in_file_gz = [in_file '.gz'] ;
 in_file_gz_target = get_link_target(in_file_gz) ;
-if ~strcmp(in_file_gz, in_file_gz_target)
+is_gz_target = ~strcmp(in_file_gz, in_file_gz_target) ;
+if is_gz_target
     in_file = in_file_gz_target ;
 end
 
 % If in_file has wildcard, expand into full filename (fail if not exactly 1
 % match)
-if contains(in_file,'*')
+has_wildcard = contains(in_file,'*') ;
+if has_wildcard
     filelist = dir(in_file) ;
     if isempty(filelist)
         error('No match found for %s', in_file)
@@ -472,6 +477,8 @@ if contains(in_file,'*')
         fprintf('Resolving\n%s\ninto\n%s\n', in_file, tmp)
         in_file =  tmp ;
     end
+elseif ~isempty(extension) && ~is_gz_target
+    in_file = [in_file extension] ;
 end
 
 % Get info
