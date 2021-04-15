@@ -45,6 +45,16 @@ end
 if ~isempty(lon_orient) && ~(strcmp(lon_orient,'left') || strcmp(lon_orient,'center')  || strcmp(lon_orient,'right'))
     error(['If providing lon_orient, it must be either left, center, or right. (' lon_orient ')'])
 end
+if ~isempty(target_lat_orient) && ~(strcmp(target_lat_orient,'lower') || strcmp(target_lat_orient,'center')  || strcmp(target_lat_orient,'upper'))
+    error(['If providing target_lat_orient, it must be either lower, center, or upper. (' target_lat_orient ')'])
+end
+if ~isempty(target_lon_orient) && ~(strcmp(target_lon_orient,'left') || strcmp(target_lon_orient,'center')  || strcmp(target_lon_orient,'right'))
+    error(['If providing target_lon_orient, it must be either left, center, or right. (' target_lon_orient ')'])
+end
+if force_mat_nosave && force_mat_save
+    warning('force_mat_save and force_mat_nosave can''t both be true. MATfile will not be saved.')
+    force_mat_save = false ;
+end
 if force_mat_nosave && force_mat_save
     warning('force_mat_save and force_mat_nosave can''t both be true. MATfile will not be saved.')
     force_mat_save = false ;
@@ -333,19 +343,21 @@ if ~isempty(lonlats_target)
     end
     
     % Adjust longitudes to match target orientation, if needed
-    if exist('lon_orient', 'var') && exist('target_lon_orient', 'var') ...
+    if ~isempty(lon_orient) && ~isempty(target_lon_orient) ...
     && ~strcmp(lon_orient, target_lon_orient)
         switch lon_orient
             case 'left' ; lon_orient_N = 0 ;
             case 'center' ; lon_orient_N = 1 ;
             case 'right' ; lon_orient_N = 2 ;
+            otherwise ; error('lon_orient %s not recognized', lon_orient)
         end
         switch target_lon_orient
             case 'left' ; target_lon_orient_N = 0 ;
             case 'center' ; target_lon_orient_N = 1 ;
             case 'right' ; target_lon_orient_N = 2 ;
+            otherwise ; error('target_lon_orient %s not recognized', target_lon_orient)
         end
-        if ~exist('xres', 'var') || isnan(xres)
+        if isempty(xres) || isnan(xres)
             xres = lpjgu_process_resolution( ...
                 xres, yres, ...
                 out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
@@ -356,19 +368,21 @@ if ~isempty(lonlats_target)
     end
     
     % Adjust latitudes to match target orientation, if needed
-    if exist('lat_orient', 'var') && exist('target_lat_orient', 'var') ...
+    if ~isempty(lat_orient) && ~isempty(target_lat_orient) ...
     && ~strcmp(lat_orient, target_lat_orient)
         switch lat_orient
             case 'lower' ; lat_orient_N = 0 ;
             case 'center' ; lat_orient_N = 1 ;
             case 'upper' ; lat_orient_N = 2 ;
+            otherwise ; error('lat_orient %s not recognized', lat_orient)
         end
         switch target_lat_orient
             case 'lower' ; target_lat_orient_N = 0 ;
             case 'center' ; target_lat_orient_N = 1 ;
             case 'upper' ; target_lat_orient_N = 2 ;
+            otherwise ; error('target_lat_orient %s not recognized', target_lat_orient)
         end
-        if ~exist('yres', 'var') || isnan(yres)
+        if isempty(yres) || isnan(yres)
             yres = lpjgu_process_resolution( ...
                 xres, yres, ...
                 out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
