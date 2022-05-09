@@ -7,6 +7,8 @@ is_ok_struct = @(x) isstruct(x) ...
     & (all(isfield(x, {'garr_xvy', 'yearList'})) | isfield(x, 'garr_xv')) ...
     & all(isfield(x, {'lonlats', 'list2map', 'varNames'})) ;
 
+isPositiveIntegerValuedNumeric = @(x) isint(x) && x>0 ;
+
 % Set up & parse input arguments
 p = inputParser ;
 addRequired(p,'in_forHead') ;
@@ -15,15 +17,15 @@ addRequired(p,'out_array',...
 addRequired(p,'out_file',@ischar) ;
 addParameter(p,'outPrec',3,is_nonneg_int) ;
 addParameter(p,'outPrec_lonlat',2,is_nonneg_int) ;
-addParameter(p,'outWidth',5,@isPositiveIntegerValuedNumeric) ;
+addParameter(p,'outWidth',5,isPositiveIntegerValuedNumeric) ;
 addParameter(p,'varNameAlign','L',...
     @(x) strcmpi(x,'L') || strcmpi(x,'R')) ;
 addParameter(p,'dataAlign','L',...
     @(x) strcmpi(x,'L') || strcmpi(x,'R')) ;
 addParameter(p,'fancy',false,@islogical) ;
 addParameter(p,'progress_step_pct',5,@isnumeric) ;
-addParameter(p,'save_every_n',1000,@isPositiveIntegerValuedNumeric) ;
-addParameter(p,'save_every_pct',5,@isPositiveIntegerValuedNumeric) ;
+addParameter(p,'save_every_n',1000,isPositiveIntegerValuedNumeric) ;
+addParameter(p,'save_every_pct',5,isPositiveIntegerValuedNumeric) ;
 addParameter(p,'delimiter',' ',@ischar) ;
 addParameter(p,'overwrite',false,@islogical) ;
 addParameter(p,'verbose',true,@islogical) ;
