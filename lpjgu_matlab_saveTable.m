@@ -97,10 +97,8 @@ end
 % Write data
 if p.Results.fancy
     write_fancy(in_header_str, in_header_cell, p, out_file, out_array) ;
-elseif p.Results.verbose
-    write_fast(in_header_str, in_header_cell, p, out_file, out_array) ;
 else
-    write_quiet(in_header_str, in_header_cell, p, out_file, out_array) ;
+    write_fast(in_header_str, in_header_cell, p, out_file, out_array, p.Results.verbose) ;
 end
 
 % Zip data
@@ -116,90 +114,8 @@ end
 
 end
 
-function write_quiet(in_header_str, in_header_cell, p, out_file, out_array)
 
-if isstruct(out_array)
-    error('Rework write_quiet() to work with structure form of out_array')
-end
-% Make out_header_str
-if isempty(in_header_str)
-    % Get maximum length of variable names
-    varName_max_width = 0 ;
-    for v = 1:length(in_header_cell)
-        varName_max_width = max(varName_max_width,length(in_header_cell{v})) ;
-    end
-    tmp_header_cell = in_header_cell ;
-    for v = 1:length(in_header_cell)
-        thisVar = tmp_header_cell{v} ;
-        if strcmp(thisVar,'Lon') || strcmp(thisVar,'Lat') || strcmp(thisVar,'Year')
-            outWidth = 5 ;
-        else
-            outWidth = min(p.Results.outWidth,varName_max_width) ;
-        end
-        while length(thisVar) < outWidth
-            thisVar = [thisVar ' '] ;
-        end
-        tmp_header_cell{v} = thisVar ;
-    end
-    out_header_str = strjoin(tmp_header_cell,p.Results.delimiter) ;
-else
-    out_header_str = in_header_str ;
-end
-
-
-% Get lat/lon/yr columns
-[i_lat,i_lon,i_year] = lpjgu_matlab_getLatLonYrCols(in_header_cell) ;
-
-% Get output file formatSpec
-out_header_cell = in_header_cell ;
-out_header_cell = pad(out_header_cell,p.Results.outWidth) ;
-out_formatSpec = '' ;
-for i = 1:length(out_header_cell)
-    %     thisCol = out_header_cell{i} ;
-    if i>1
-        out_formatSpec = [out_formatSpec p.Results.delimiter] ;
-    end
-    if i==i_lat || i==i_lon
-        out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) '.' num2str(p.Results.outPrec_lonlat) 'f'] ;
-    elseif i==i_year || any(p.Results.justZeroCols==i)
-        out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) 'u'] ;
-    elseif p.Results.outPrec==0
-        out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) 'd'] ;
-    else
-        out_formatSpec = [out_formatSpec '%-' num2str(p.Results.outWidth) '.' num2str(p.Results.outPrec) 'f'] ;
-    end
-end
-out_formatSpec = [out_formatSpec ' \n'] ;
-
-% Save header
-fileID_out = fopen(out_file, 'w') ;
-fprintf(fileID_out,'%s \n', out_header_str) ;
-
-% Write data line-by-line
-if istable(out_array)
-    out_array = table2array(out_array) ;
-end
-Nrows = size(out_array,1) ;
-
-for i = 1:Nrows
-    
-    % Some array values may be "-0", which MATLAB treats as equal to "0", but 
-    % which can end up being printed as -0 due to different IEEE
-    % representations.
-    % https://www.mathworks.com/matlabcentral/answers/91430-why-does-fprintf-put-minus-signs-in-front-of-zeros-in-my-file
-    out_line = out_array(i,:) ;
-    out_line(out_line==0) = 0 ;
-    
-    % Write line
-    fprintf(fileID_out,out_formatSpec,out_line) ;
-    
-end
-
-fclose(fileID_out) ;
-
-end
-
-function write_fast(in_header_str, in_header_cell, p, out_file, out_array)
+function write_fast(in_header_str, in_header_cell, p, out_file, out_array, verbose)
 
 % Make out_header_str
 if isempty(in_header_str)
@@ -317,7 +233,9 @@ if isstruct(out_array)
         
         fclose(fileID_out) ;
         thisPct = round(ii/Nchunks*100) ;
-        fprintf('%d%%...\n', thisPct) ;
+        if verbose
+            fprintf('%d%%...\n', thisPct) ;
+        end
         pause(0.1)
                 
     end
