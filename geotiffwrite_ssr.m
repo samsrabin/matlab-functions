@@ -16,9 +16,12 @@ end
 A2 = flipud(A) ;
 A2(isnan(A2)) = ndval ;
 
+disp('Saving GeoTIFF...')
 geotiffwrite(filename_tmp,A2,R) ;
 
-thisFmt = ['source ~/.bash_profile; gdal_translate -a_nodata %s "%s" "%s"'] ;
+disp('Embedding nodata value...')
+% thisFmt = ['source ~/.bash_profile; gdal_translate -a_nodata %s "%s" "%s"'] ;
+thisFmt = '/Library/Frameworks/GDAL.framework/Programs/gdal_translate -a_nodata %s "%s" "%s"' ;
 [s,w] = unix(sprintf(thisFmt, num2str(ndval), filename_tmp, filename)) ;
 if s~=0
     error(w)
