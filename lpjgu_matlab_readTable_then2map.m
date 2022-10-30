@@ -156,8 +156,10 @@ else
     end
     
     % Get lonlats
-    lons_map_YX = repmat((-180+xres/2):xres:180, [180/yres 1]) ;
-    lats_map_YX = repmat(transpose((-90+yres/2):yres:90), [1 360/xres]) ;
+    Nlon = get_Nlonlat_inTolerance(360, xres) ;
+    Nlat = get_Nlonlat_inTolerance(180, yres) ;
+    lons_map_YX = repmat((-180+xres/2):xres:180, [Nlat 1]) ;
+    lats_map_YX = repmat(transpose((-90+yres/2):yres:90), [1 Nlon]) ;
     lons_out = lons_map_YX(list_to_map) ;
     lats_out = lats_map_YX(list_to_map) ;
     lonlats = [lons_out lats_out] ;
@@ -255,11 +257,28 @@ end
 end
 
 
+function Nlonlat = get_Nlonlat_inTolerance(Ndeg, res)
+
+Nlonlat = Ndeg / res ;
+if round(Nlonlat) ~= Nlonlat
+    Nlonlat_tol = 1e-9 ;
+    if abs(round(Nlonlat) - Nlonlat) > Nlonlat_tol
+        error('Nlon/lat not integer within %g: off from %d by %g (Ndeg %g, res %g)', ...
+            Nlonlat_tol, round(Nlonlat), abs(round(Nlonlat)-Nlonlat), Ndeg, res)
+    else
+        warning('Nlon/lat not integer (off by %g) but within tolerance of %g', abs(round(Nlonlat)-Nlonlat), Nlonlat_tol)
+    end
+end
+Nlonlat = int64(Nlonlat) ;
+
+end
+
+
 function out_maps = make_maps(xres,yres,multi_yrs,yearList,varNames,in_table,list_to_map,is_gridlist,found,...
     dataType, verboseIfNoMat, verbose)
 
-Nlon = 360 / xres ;
-Nlat = 180 / yres ;
+Nlon = get_Nlonlat_inTolerance(360, xres) ;
+Nlat = get_Nlonlat_inTolerance(180, yres) ;
 
 if is_gridlist
     if verboseIfNoMat || verbose

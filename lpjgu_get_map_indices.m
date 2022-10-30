@@ -15,6 +15,9 @@ lats_vec = round(lats_vec,in_prec) ;
 [~,lons_inds] = ismember(in_lons,lons_vec) ;
 [~,lats_inds] = ismember(in_lats,lats_vec) ;
 found = ~(lons_inds==0 | lats_inds==0) ;
+if ~any(found)
+    error('No cells found with both lon and lat! %d found lon, %d found lat', sum(lons_inds>0), sum(lats_inds>0))
+end
 if any(~found)
     warning([num2str(length(find(~found))) ' cells being ignored.'])
     lons_inds(~found) = [] ;
@@ -29,4 +32,9 @@ end
 if length(list_to_map) ~= Ncells-length(find(~found))
     error('length(list_to_map) ~= Ncells-length(find(~found))')
 end
+if length(list_to_map) ~= length(unique(list_to_map))
+    error('list_to_map has %d values but only %d unique(s)', length(list_to_map), length(unique(list_to_map)))
+end
+
+
 end
