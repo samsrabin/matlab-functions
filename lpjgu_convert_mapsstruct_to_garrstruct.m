@@ -104,3 +104,10 @@ else
         error('???')
     end
 end
+if isfield(in_struct, 'lat_extent')
+    out_struct.lat_extent = in_struct.lat_extent ;
+end
+if isfield(in_struct, 'lat_orient')
+    out_struct.lat_orient = in_struct.lat_orient ;
+end
+

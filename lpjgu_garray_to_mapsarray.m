@@ -2,6 +2,12 @@ function out_struct = lpjgu_garray_to_mapsarray(in_struct)
 
 out_struct.list2map = in_struct.list2map ;
 out_struct.varNames = in_struct.varNames ;
+if isfield(in_struct, 'lat_extent')
+    out_struct.lat_extent = in_struct.lat_extent ;
+end
+if isfield(in_struct, 'lat_orient')
+    out_struct.lat_orient = in_struct.lat_orient ;
+end
 Nvars = length(in_struct.varNames) ;
 
 % Get map array size and list2map (do not trust in_struct.list2map)

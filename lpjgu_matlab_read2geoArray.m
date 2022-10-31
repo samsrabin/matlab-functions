@@ -18,6 +18,8 @@ addOptional(p,'target',{},is_ok_target) ;
 addOptional(p,'target_lat_orient','',@isstr) ;
 addOptional(p,'target_lon_orient','',@isstr) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
+addOptional(p,'drop_northpole',false,@islogical) ;
+addOptional(p,'drop_southpole',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 if isempty(in_file)
@@ -232,10 +234,14 @@ if ~exist('out_struct', 'var')
         out_struct = rmfield(out_struct, 'list_to_map') ;
         
         % Get lonlats
-        xres = 360 / size(out_struct.mask_YX, 2) ;
-        yres = 180 / size(out_struct.mask_YX, 1) ;
-        lons_map_YX = repmat((-180+xres/2):xres:180, [180/yres 1]) ;
-        lats_map_YX = repmat(transpose((-90+yres/2):yres:90), [1 360/xres]) ;
+        lat_extent = out_struct.lat_extent ;
+        Nlatdeg = lat_extent(2) - lat_extent(1) ;
+        Nlat = size(out_struct.mask_YX, 1) ;
+        Nlon = size(out_struct.mask_YX, 2) ;
+        xres = 360 / Nlon ;
+        yres = Nlatdeg / Nlat ;
+        lons_map_YX = repmat((-180+xres/2):xres:180, [Nlat 1]) ;
+        lats_map_YX = repmat(transpose((lat_extent(1)+yres/2):yres:lat_extent(2)), [1 Nlon]) ;
         lons_out = lons_map_YX(out_struct.list2map) ;
         lats_out = lats_map_YX(out_struct.list2map) ;
         out_struct.lonlats = [lons_out lats_out] ;
@@ -252,12 +258,15 @@ if ~exist('out_struct', 'var')
         out_struct.lonlats = lonlats_in ;
         Ncells = length(lonlats_in) ;
         if isempty(lonlats_target)
-            out_struct.list2map = get_indices( ...
+            [out_struct.list2map, out_struct.lat_extent] = get_indices( ...
                 lonlats_in, xres, yres, ...
                 list2map_target, ...
                 lat_orient, lon_orient, ...
                 verboseIfNoMat, verbose, in_prec) ;
+        else
+            out_struct.lat_extent = lpjgu_get_lat_extent(lat_orient, drop_northpole, drop_southpole, yres) ;
         end
+        out_struct.lat_orient = lat_orient ;
         
         % Get variable names
         varNames = setdiff(table_in.Properties.VariableNames, ...
@@ -361,6 +370,7 @@ if ~isempty(lonlats_target)
             xres = lpjgu_process_resolution( ...
                 xres, yres, ...
                 out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
+                lat_orient, drop_northpole, drop_southpole, ...
                 verboseIfNoMat, verbose) ;
         end
         out_struct.lonlats(:,1) = out_struct.lonlats(:,1) ...
@@ -386,6 +396,7 @@ if ~isempty(lonlats_target)
             yres = lpjgu_process_resolution( ...
                 xres, yres, ...
                 out_struct.lonlats(:,1), out_struct.lonlats(:,2), ...
+                lat_orient, drop_northpole, drop_southpole, ...
                 verboseIfNoMat, verbose) ;
         end
         out_struct.lonlats(:,2) = out_struct.lonlats(:,2) ...
@@ -501,17 +512,20 @@ end
 end
 
 
-function list_to_map = get_indices(lonlats_in,xres,yres,list2map_target,lat_orient,lon_orient,verboseIfNoMat,verbose,in_prec)
+function [list_to_map, lat_extent] = get_indices(lonlats_in, xres, yres, list2map_target, ...
+    lat_orient, lon_orient, verboseIfNoMat, verbose, in_prec)
 
 % Get table info
 in_lons = lonlats_in(:,1) ;
 in_lats = lonlats_in(:,2) ;
 
 % Sort out map resolution
-[xres,yres] = lpjgu_process_resolution(xres,yres,in_lons,in_lats,verboseIfNoMat,verbose) ;
+[xres, yres, lat_extent] = lpjgu_process_resolution(xres, yres, in_lons, in_lats, ...
+    lat_orient, verboseIfNoMat, verbose) ;
 
 % Get ready for mapping
-[lons_map,lats_map] = lpjgu_set_up_maps(xres,yres,in_lons,in_lats,lat_orient,lon_orient,verboseIfNoMat,verbose) ;
+[lons_map,lats_map] = lpjgu_set_up_maps(xres, yres, in_lons, in_lats, lat_orient, lon_orient, lat_extent, ...
+    verboseIfNoMat, verbose) ;
 
 % Get indices for mapping
 if isempty(list2map_target)

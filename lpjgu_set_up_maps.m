@@ -1,12 +1,13 @@
-function [out_lons_map,out_lats_map] = lpjgu_set_up_maps(xres,yres,in_lons,in_lats,lat_orient,lon_orient,verboseIfNoMat,verbose)
+function [out_lons_map, out_lats_map] = lpjgu_set_up_maps(xres, yres, in_lons, in_lats, ...
+    lat_orient, lon_orient, lat_extent, verboseIfNoMat, verbose)
 
 % Determine orientation, if needed
 if isempty(lat_orient)
-    if any(in_lats==-90)
+    if any(in_lats==lat_extent(1))
         lat_orient = 'lower' ;
-    elseif any(in_lats==90)
+    elseif any(in_lats==lat_extent(2))
         lat_orient = 'upper' ;
-    elseif any(in_lats-yres/2==-90 | in_lats+yres/2==90)
+    elseif any(in_lats-yres/2==lat_extent(1) | in_lats+yres/2==lat_extent(2))
         lat_orient = 'center' ;
     else
         if any(rem(in_lats,yres)==0)
@@ -40,14 +41,14 @@ end
 
 % Set up maps
 if strcmp(lat_orient,'lower')
-    lat_min = -90 ;
-    lat_max = 90-yres ;
+    lat_min = lat_extent(1) ;
+    lat_max = lat_extent(2)-yres ;
 elseif strcmp(lat_orient,'upper')
-    lat_min = -90+yres ;
-    lat_max = 90 ;
+    lat_min = lat_extent(1)+yres ;
+    lat_max = lat_extent(2) ;
 elseif strcmp(lat_orient,'center')
-    lat_min = -90+yres/2 ;
-    lat_max = 90-yres/2 ;
+    lat_min = lat_extent(1)+yres/2 ;
+    lat_max = lat_extent(2)-yres/2 ;
 end
 if strcmp(lon_orient,'left')
     lon_min = -180 ;
