@@ -525,7 +525,7 @@ in_lats = lonlats_in(:,2) ;
 
 % Get ready for mapping
 [lons_map,lats_map] = lpjgu_set_up_maps(xres, yres, in_lons, in_lats, lat_orient, lon_orient, lat_extent, ...
-    verboseIfNoMat, verbose) ;
+    lons_centered_on_180, verboseIfNoMat, verbose) ;
 
 % Get indices for mapping
 if isempty(list2map_target)

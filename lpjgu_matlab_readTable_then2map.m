@@ -17,6 +17,7 @@ addOptional(p,'in_prec',2,@isint) ;
 addOptional(p,'force_as_gridlist',false,@islogical) ;
 addOptional(p,'drop_northpole',false,@islogical) ;
 addOptional(p,'drop_southpole',false,@islogical) ;
+addOptional(p,'lons_centered_on_180',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 xres = p.Results.xres ;
@@ -33,6 +34,7 @@ in_prec = p.Results.in_prec ;
 force_as_gridlist = p.Results.force_as_gridlist ;
 drop_northpole = p.Results.drop_northpole ;
 drop_southpole = p.Results.drop_southpole ;
+lons_centered_on_180 = p.Results.lons_centered_on_180 ;
 
 if ~isempty(lat_orient) && ~(strcmp(lat_orient,'lower') || strcmp(lat_orient,'center')  || strcmp(lat_orient,'upper'))
     error(['If providing lat_orient, it must be either lower, center, or upper. (' lat_orient ')'])
@@ -150,7 +152,7 @@ else
     end
     [yearList, multi_yrs, varNames, list_to_map, xres, yres, found, lat_extent] = ...
         get_indices(in_table, xres, yres, list_to_map_in, lat_orient, lon_orient, ...
-        drop_northpole, drop_southpole, ...
+        drop_northpole, drop_southpole, lons_centered_on_180, ...
         verboseIfNoMat, verbose, in_prec) ;
     if is_gridlist
         mask_YX = make_maps(xres, yres, multi_yrs, yearList, varNames, in_table, list_to_map, is_gridlist, ...
@@ -210,7 +212,7 @@ end
 
 function [yearList,multi_yrs,varNames,list_to_map,xres,yres,found, lat_extent] = ...
     get_indices(in_table, xres, yres, list_to_map_in, lat_orient, lon_orient, ...
-    drop_northpole, drop_southpole, ...
+    drop_northpole, drop_southpole, lons_centered_on_180, ...
     verboseIfNoMat, verbose, in_prec)
 
 % Get table info
@@ -233,7 +235,7 @@ end
 
 % Get ready for mapping
 [lons_map, lats_map] = lpjgu_set_up_maps(xres, yres, in_lons, in_lats, lat_orient, lon_orient, lat_extent, ...
-    verboseIfNoMat, verbose) ;
+    lons_centered_on_180, verboseIfNoMat, verbose) ;
 
 % Get indices for mapping
 if isempty(list_to_map_in)
@@ -324,11 +326,7 @@ else
             for y = 1:Nyears
                 thisYear = yearList(y) ;
                 tmp = nan(Nlat,Nlon,dataType) ;
-                try
-                    tmp(list_to_map) = table2array(in_table(in_table.Year==thisYear,thisVar)) ;
-                catch ME
-                    x=1;
-                end
+                tmp(list_to_map) = table2array(in_table(in_table.Year==thisYear,thisVar)) ;
                 out_maps(:,:,v,y) = tmp ;
             end
         else
