@@ -281,7 +281,7 @@ function Nlonlat = get_Nlonlat_inTolerance(Ndeg, res)
 
 Nlonlat = Ndeg / res ;
 if round(Nlonlat) ~= Nlonlat
-    Nlonlat_tol = 1e-9 ;
+    Nlonlat_tol = 1e-5 ;
     if abs(round(Nlonlat) - Nlonlat) > Nlonlat_tol
         error('Nlon/lat not integer within %g: off from %d by %g (Ndeg %g, res %g)', ...
             Nlonlat_tol, round(Nlonlat), abs(round(Nlonlat)-Nlonlat), Ndeg, res)
