@@ -234,7 +234,11 @@ if ~exist('out_struct', 'var')
         out_struct = rmfield(out_struct, 'list_to_map') ;
         
         % Get lonlats
-        lat_extent = out_struct.lat_extent ;
+        if isfield(out_struct, 'lat_extent')
+            lat_extent = out_struct.lat_extent ;
+        else
+            lat_extent = [-90 90] ;
+        end
         Nlatdeg = lat_extent(2) - lat_extent(1) ;
         Nlat = size(out_struct.mask_YX, 1) ;
         Nlon = size(out_struct.mask_YX, 2) ;
