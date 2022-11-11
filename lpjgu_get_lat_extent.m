@@ -13,7 +13,7 @@ if strcmp(lat_orient, 'center')
     if drop_southpole
         lat_extent(1) = lat_extent(1) + yres/2 ;
     end
-elseif ~any(strcmp(lat_orient, {'upper', 'lower'}))
+elseif ~any(strcmp(lat_orient, {'upper', 'lower'})) && (drop_southpole || drop_northpole)
     error('lpjgu_process_resolution() doesn''t know how to handle lat_orient %s', lat_orient)
 end
 
