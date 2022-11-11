@@ -20,6 +20,7 @@ addOptional(p,'target_lon_orient','',@isstr) ;
 addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 addOptional(p,'drop_northpole',false,@islogical) ;
 addOptional(p,'drop_southpole',false,@islogical) ;
+addOptional(p,'lons_centered_on_180',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 if isempty(in_file)
@@ -265,7 +266,8 @@ if ~exist('out_struct', 'var')
             [out_struct.list2map, out_struct.lat_extent] = get_indices( ...
                 lonlats_in, xres, yres, ...
                 list2map_target, ...
-                lat_orient, lon_orient, ...
+                lat_orient, lon_orient, lons_centered_on_180, ...
+                drop_northpole, drop_southpole, ...
                 verboseIfNoMat, verbose, in_prec) ;
         else
             out_struct.lat_extent = lpjgu_get_lat_extent(lat_orient, drop_northpole, drop_southpole, yres) ;
@@ -517,7 +519,7 @@ end
 
 
 function [list_to_map, lat_extent] = get_indices(lonlats_in, xres, yres, list2map_target, ...
-    lat_orient, lon_orient, verboseIfNoMat, verbose, in_prec)
+    lat_orient, lon_orient, lons_centered_on_180, drop_northpole, drop_southpole, verboseIfNoMat, verbose, in_prec)
 
 % Get table info
 in_lons = lonlats_in(:,1) ;
@@ -525,7 +527,7 @@ in_lats = lonlats_in(:,2) ;
 
 % Sort out map resolution
 [xres, yres, lat_extent] = lpjgu_process_resolution(xres, yres, in_lons, in_lats, ...
-    lat_orient, verboseIfNoMat, verbose) ;
+    lat_orient, drop_northpole, drop_southpole, verboseIfNoMat, verbose) ;
 
 % Get ready for mapping
 [lons_map,lats_map] = lpjgu_set_up_maps(xres, yres, in_lons, in_lats, lat_orient, lon_orient, lat_extent, ...
