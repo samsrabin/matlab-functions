@@ -103,7 +103,9 @@ end
 
 % Zip data
 if p.Results.gzip
-    disp('Zipping...')
+    if p.Results.verbose
+        disp('Zipping...')
+    end
     gzip(out_file)
     delete(out_file)
 end
