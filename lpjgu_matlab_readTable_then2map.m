@@ -8,6 +8,7 @@ addOptional(p,'yres',NaN,@isnumeric) ;
 addOptional(p,'lat_orient','',@isstr) ;
 addOptional(p,'lon_orient','',@isstr) ;
 addOptional(p,'verbose',false,@islogical) ;
+addOptional(p,'quiet',false,@islogical) ;
 addOptional(p,'verboseIfNoMat',false,@islogical) ;
 addOptional(p,'force_mat_save',true,@islogical) ;
 addOptional(p,'force_mat_nosave',false,@islogical) ;
@@ -23,6 +24,7 @@ parse(p,in_file,varargin{:});
 xres = p.Results.xres ;
 yres = p.Results.yres ;
 verbose = p.Results.verbose ;
+quiet = p.Results.quiet ;
 verboseIfNoMat = p.Results.verboseIfNoMat ;
 force_mat_save = p.Results.force_mat_save ;
 force_mat_nosave = p.Results.force_mat_nosave ;
@@ -156,21 +158,21 @@ else
         verboseIfNoMat, verbose, in_prec) ;
     if is_gridlist
         mask_YX = make_maps(xres, yres, multi_yrs, yearList, varNames, in_table, list_to_map, is_gridlist, ...
-            found, lat_extent, dataType, verboseIfNoMat, verbose) ;
+            found, lat_extent, dataType, verboseIfNoMat, verbose, quiet) ;
     else
         if multi_yrs
             maps_YXvy = make_maps(xres, yres, multi_yrs, yearList, varNames, in_table, list_to_map, is_gridlist, ...
-            found, lat_extent, dataType, verboseIfNoMat, verbose) ;
+            found, lat_extent, dataType, verboseIfNoMat, verbose, quiet) ;
         else
             maps_YXv = make_maps(xres, yres, multi_yrs, yearList, varNames, in_table, list_to_map, is_gridlist, ...
-            found, lat_extent, dataType, verboseIfNoMat, verbose) ;
+            found, lat_extent, dataType, verboseIfNoMat, verbose, quiet) ;
         end
     end
     
     % Get lonlats
     Nlatdeg = lat_extent(2) - lat_extent(1) ;
-    Nlon = get_Nlonlat_inTolerance(360, xres) ;
-    Nlat = get_Nlonlat_inTolerance(Nlatdeg, yres) ;
+    Nlon = get_Nlonlat_inTolerance(360, xres, quiet) ;
+    Nlat = get_Nlonlat_inTolerance(Nlatdeg, yres, quiet) ;
     lons_map_YX = repmat((-180+xres/2):xres:180, [Nlat 1]) ;
     lats_map_YX = repmat(transpose((lat_extent(1)+yres/2):yres:lat_extent(2)), [1 Nlon]) ;
     lons_out = lons_map_YX(list_to_map) ;
@@ -277,7 +279,7 @@ end
 end
 
 
-function Nlonlat = get_Nlonlat_inTolerance(Ndeg, res)
+function Nlonlat = get_Nlonlat_inTolerance(Ndeg, res, quiet)
 
 Nlonlat = Ndeg / res ;
 if round(Nlonlat) ~= Nlonlat
@@ -285,7 +287,7 @@ if round(Nlonlat) ~= Nlonlat
     if abs(round(Nlonlat) - Nlonlat) > Nlonlat_tol
         error('Nlon/lat not integer within %g: off from %d by %g (Ndeg %g, res %g)', ...
             Nlonlat_tol, round(Nlonlat), abs(round(Nlonlat)-Nlonlat), Ndeg, res)
-    else
+    elseif ~quiet
         warning('Nlon/lat not integer (off by %g) but within tolerance of %g', abs(round(Nlonlat)-Nlonlat), Nlonlat_tol)
     end
 end
@@ -295,10 +297,10 @@ end
 
 
 function out_maps = make_maps(xres,yres,multi_yrs,yearList,varNames,in_table,list_to_map,is_gridlist,found,...
-    lat_extent, dataType, verboseIfNoMat, verbose)
+    lat_extent, dataType, verboseIfNoMat, verbose, quiet)
 
-Nlon = get_Nlonlat_inTolerance(360, xres) ;
-Nlat = get_Nlonlat_inTolerance(lat_extent(2) - lat_extent(1), yres) ;
+Nlon = get_Nlonlat_inTolerance(360, xres, quiet) ;
+Nlat = get_Nlonlat_inTolerance(lat_extent(2) - lat_extent(1), yres, quiet) ;
 
 if is_gridlist
     if verboseIfNoMat || verbose
