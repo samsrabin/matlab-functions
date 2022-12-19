@@ -1,5 +1,7 @@
 function varargout = read_lpjg_outfiles_to_maps(xres,yres,varargin)
 
+warning('gridlist_to_map() not updated to include lat_extent or lat_orient as fields of out_struct')
+
 % auto_load_from_matfile = false ;
 % if ~isempty(varargin)
 %     auto_load_from_matfile = varargin{1} ;

@@ -36,8 +36,11 @@ found_lons = lons_map(in_map==1) ;
 found_lats = lats_map(in_map==1) ;
 out_data = [found_lons found_lats] ;
 if p.Results.randomize
-    error('Randomizing doesn''t work yet!')
-    out_data = out_data(randperm(size(out_data,1)),:) ;
+    % Get random order for output
+    rng(20221001) ;
+    Ncells_4gl = length(found_lons) ;
+    rdmsam = randsample(Ncells_4gl,Ncells_4gl) ;
+    out_data = out_data(rdmsam,:) ;
 end
 formatSpec = '%3.2f %3.2f\n' ;
 fileID = fopen(out_file,'w') ;

@@ -1,5 +1,7 @@
 function varargout = gridlist_to_map(xres,yres,in_file,varargin)
 
+warning('gridlist_to_map() not updated to include lat_extent or lat_orient as fields of out_struct')
+
 force_struct = false ;
 if isempty(varargin)
     disp('Assuming in_file is the gridlist to be mapped, and that Col1=Lon and Col2=Lat.')
