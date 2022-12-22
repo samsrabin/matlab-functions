@@ -18,3 +18,4 @@ kakearney-boundedline/.gitignore
 *.swo
 **/.git*
 *.asv
+landsymm_lpjg_path.m
