@@ -19,3 +19,4 @@ kakearney-boundedline/.gitignore
 **/.git*
 *.asv
 landsymm_lpjg_path.m
+isimip3_input_path.m
