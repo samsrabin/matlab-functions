@@ -22,6 +22,7 @@ addOptional(p,'drop_northpole',false,@islogical) ;
 addOptional(p,'drop_southpole',false,@islogical) ;
 addOptional(p,'lons_centered_on_180',false,@islogical) ;
 addOptional(p,'fill_missing_cells_with_nan',false,@islogical) ;
+addOptional(p,'gridlist_warn',true,@islogical) ;
 parse(p,in_file,varargin{:});
 
 if isempty(in_file)
@@ -223,7 +224,9 @@ if ~exist('out_struct', 'var')
         'do_save_MAT',false) ;
     is_gridlist = size(table_in,2)==2 ;
     if is_gridlist
-        warning('This file appears to be a gridlist. Will not make a geoArray.')
+        if gridlist_warn
+            warning('This file appears to be a gridlist. Will not make a geoArray.')
+        end
         
         out_struct = lpjgu_matlab_readTable_then2map(in_file,...
             'verbose',verbose,...
