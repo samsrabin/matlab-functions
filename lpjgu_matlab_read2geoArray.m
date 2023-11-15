@@ -21,6 +21,7 @@ addOptional(p,'trimfirstyear_ifneeded',false,@islogical) ;
 addOptional(p,'drop_northpole',false,@islogical) ;
 addOptional(p,'drop_southpole',false,@islogical) ;
 addOptional(p,'lons_centered_on_180',false,@islogical) ;
+addOptional(p,'fill_missing_cells_with_nan',false,@islogical) ;
 parse(p,in_file,varargin{:});
 
 if isempty(in_file)
@@ -412,9 +413,23 @@ if ~isempty(lonlats_target)
     extra_cells = [] ;
     rearr_cells = [] ;
     if ~isequal(lonlats_target, out_struct.lonlats)
-        C = intersect(lonlats_target, out_struct.lonlats, 'rows', 'stable') ;
-        if ~isequal(C, lonlats_target)
-            error('Gridlist mismatch: Not all lonlats_target in out_struct.lonlats')
+        missing_lonlats = setdiff(lonlats_target, out_struct.lonlats, 'rows') ;
+        if ~isempty(missing_lonlats)
+            Nmissing = size(missing_lonlats, 1) ;
+            out_struct.lonlats = cat(1, ...
+                out_struct.lonlats, ...
+                missing_lonlats) ;
+            out_struct.garr_xv = cat(1, ...
+                out_struct.garr_xv, ...
+                nan(Ncells, Nvars)) ;
+            if fill_missing_cells_with_nan
+                warning('Gridlist mismatch: %d cells from lonlats_target missing from out_struct.lonlats. Filling with NaN.', ...
+                    Nmissing)
+            else
+                error('Gridlist mismatch: %d cells from lonlats_target missing from out_struct.lonlats', ...
+                    Nmissing)
+            end
+
         end
         [~, extra_cells] = setdiff(out_struct.lonlats, lonlats_target, 'rows', 'stable') ;
         if isempty(extra_cells)
