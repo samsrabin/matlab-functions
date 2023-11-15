@@ -91,7 +91,11 @@ else
         in_file, verbose, verboseIfNoMat, dispPrefix, force_as_gridlist) ;
     if ~dont_save_MAT
         if do_save_MAT
-            save(in_matfile,'out_table','-v7.3') ;
+            try
+                save(in_matfile,'out_table','-v7.3') ;
+            catch
+                warning('Unable to save %s', in_matfile)
+            end
         else
             prompt_to_save(in_matfile, verbose, verboseIfNoMat, dispPrefix) ;
         end
@@ -275,7 +279,11 @@ while ~ok
         if verbose || verboseIfNoMat
             disp([dispPrefix '      Saving MAT-file...'])
         end
-        save(in_matfile,'out_table','-v7.3') ;
+        try
+            save(in_matfile,'out_table','-v7.3') ;
+        catch
+            warning('Unable to save %s', in_matfile)
+        end
     elseif (dbl==-1 && ~default_save) || strcmp(char(dbl),'n') || strcmp(char(dbl),'N')
         ok = true ;
     elseif verbose || verboseIfNoMat
