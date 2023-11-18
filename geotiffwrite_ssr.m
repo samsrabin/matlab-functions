@@ -1,4 +1,4 @@
-function geotiffwrite_ssr(filename,A,R,ndval)
+function geotiffwrite_ssr(filename, A, R, ndval)
 % GEOTIFFWRITE_SSR
 % As GEOTIFFWRITE, but takes the extra step (using GDAL Utilities) of
 % adding a NoData value where there are NaNs in A. Also automatically does
