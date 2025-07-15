@@ -19,6 +19,7 @@ addOptional(p,'force_as_gridlist',false,@islogical) ;
 addOptional(p,'drop_northpole',false,@islogical) ;
 addOptional(p,'drop_southpole',false,@islogical) ;
 addOptional(p,'lons_centered_on_180',false,@islogical) ;
+addOptional(p,'allow_read_matfiles',true,@islogical) ;
 parse(p,in_file,varargin{:});
 
 xres = p.Results.xres ;
@@ -37,6 +38,7 @@ force_as_gridlist = p.Results.force_as_gridlist ;
 drop_northpole = p.Results.drop_northpole ;
 drop_southpole = p.Results.drop_southpole ;
 lons_centered_on_180 = p.Results.lons_centered_on_180 ;
+allow_read_matfiles = p.Results.allow_read_matfiles ;
 
 if ~isempty(lat_orient) && ~(strcmp(lat_orient,'lower') || strcmp(lat_orient,'center')  || strcmp(lat_orient,'upper'))
     error(['If providing lat_orient, it must be either lower, center, or upper. (' lat_orient ')'])
@@ -105,7 +107,7 @@ end
 [~,NAME,EXT] = fileparts(in_file) ;
 
 in_matfile_maps = [in_file '.maps.mat'] ;
-if exist(in_matfile_maps,'file')
+if allow_read_matfiles && exist(in_matfile_maps,'file')
     if verbose
         disp([NAME EXT ':'])
         disp('   Loading maps MAT-file...')
